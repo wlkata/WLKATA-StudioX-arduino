@@ -5,13 +5,13 @@
     'math_number', 'math_arithmetic', 'math_single', 'math_round', 'math_modulo', 'math_constant',
     'logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'logic_ternary',
     'variables_get', 'text', 'text_join', 'text_length', 'text_isEmpty',
-    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led',
+    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low',
   ]);
   const statements = new Set([
     'variables_set', 'math_change', 'text_append', 'text_print', 'controls_if',
     'controls_repeat_ext', 'controls_repeat', 'controls_whileUntil', 'controls_for', 'controls_flow_statements',
     'arduino_setup', 'arduino_loop', 'arduino_pin_mode', 'arduino_digital_write',
-    'arduino_analog_write', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
+    'arduino_analog_write', 'arduino_digital_write_value', 'arduino_tone', 'arduino_no_tone', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
   ]);
   const types = { number: 'double', boolean: 'bool', text: 'String' };
   const defaults = { number: '0', boolean: 'false', text: 'String("")' };
@@ -81,7 +81,7 @@
       if (!block || disabled(block)) return null;
       if (block.type === 'variables_get') return variable(block).type;
       if (block.type === 'logic_ternary') return infer(child(block, 'THEN')) || infer(child(block, 'ELSE'));
-      if (['logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'text_isEmpty', 'arduino_digital_read'].includes(block.type)) return 'boolean';
+      if (['logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'text_isEmpty', 'arduino_digital_read', 'arduino_high_low'].includes(block.type)) return 'boolean';
       if (['text', 'text_join'].includes(block.type)) return 'text';
       return expressions.has(block.type) ? 'number' : null;
     }
@@ -196,6 +196,19 @@
         case 'arduino_analog_read': return number('analogRead((uint8_t)(' + n('PIN') + '))');
         case 'arduino_millis': return number('millis()');
         case 'arduino_builtin_led': return number('LED_BUILTIN');
+        case 'arduino_pin': {
+          const pin = String(field(block, 'PIN', '')).trim();
+          if (/^(?:[0-9]{1,3})$/.test(pin) && Number(pin) <= 255) return number(String(Number(pin)));
+          if (/^A(?:[0-9]|[12][0-9]|3[01])$/.test(pin)) return number(pin);
+          error(block, 'Use a pin number from 0 to 255 or a board analog label such as A0.');
+          return number('0');
+        }
+        case 'arduino_high_low': {
+          const level = field(block, 'LEVEL');
+          if (!['HIGH', 'LOW'].includes(level)) error(block, 'Choose HIGH or LOW.');
+          return boolean(level === 'HIGH' ? 'true' : 'false');
+        }
+
         default:
           error(block, 'Unsupported Arduino value: ' + block.type + '.');
           return number('0');
@@ -282,6 +295,11 @@
           if (!['HIGH', 'LOW'].includes(level)) error(block, 'Choose HIGH or LOW.');
           return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), ' + (level === 'HIGH' ? 'HIGH' : 'LOW') + ');');
         }
+        case 'arduino_digital_write_value':
+          return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), (' + value('STATE', 'boolean') + ') ? HIGH : LOW);');
+        case 'arduino_tone':
+          return line('tone((uint8_t)(' + value('PIN', 'number') + '), (unsigned int)constrain(' + value('FREQUENCY', 'number') + ', 0, 65535), (unsigned long)max(0.0, (double)(' + value('DURATION', 'number') + ')));');
+        case 'arduino_no_tone': return line('noTone((uint8_t)(' + value('PIN', 'number') + '));');
         case 'arduino_analog_write': return line('analogWrite((uint8_t)(' + value('PIN', 'number') + '), (int)constrain(' + value('VALUE', 'number') + ', 0, 255));');
         case 'arduino_delay': return line('delay((unsigned long)max(0.0, (double)(' + value('MS', 'number') + ')));');
         case 'text_print': usesSerial = true; return line('Serial.println(' + value('TEXT') + ');');

@@ -122,6 +122,12 @@ Variables are initialized to 0, false, or empty text, and keep one inferred type
 Numbers use Arduino `double` (on classic AVR boards this has float precision),
 booleans use `bool`, and text uses Arduino `String`. Python's arbitrary-size
 integers and dynamic type changes are not emulated. Text is encoded as UTF-8.
+The Arduino toolbox groups Program, I/O, Timing, and Serial blocks. I/O blocks
+include named pins (`13`, `A0`), digital HIGH/LOW values, condition-driven digital
+writes, and buzzer tone/stop-tone controls, alongside pin mode, digital reads and
+writes, analog reads, and PWM. Value inputs have editable defaults. Pin labels,
+PWM capability, and tone support depend on the selected board.
+
 PWM values are clamped to 0–255; use a PWM-capable pin for your board.
 Serial output defaults to 9600 baud unless you add an explicit serial begin
 block. Simple text/serial output does not include a serial-monitor UI.

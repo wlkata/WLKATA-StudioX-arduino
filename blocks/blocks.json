@@ -137,7 +137,7 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "PWM output, clamped to 0–255. Use a PWM-capable pin on your board.",
+    "tooltip": "PWM output, clamped to 0\u2013255. Use a PWM-capable pin on your board.",
     "previousStatement": null,
     "nextStatement": null,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
@@ -223,5 +223,107 @@
     "previousStatement": null,
     "nextStatement": null,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_pin",
+    "message0": "pin %1",
+    "args0": [
+      {
+        "type": "field_input",
+        "name": "PIN",
+        "text": "13"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "A digital pin number (0\u2013255) or an analog pin label such as A0. Use the labels supported by your board.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": "Number"
+  },
+  {
+    "type": "arduino_high_low",
+    "message0": "digital state %1",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "LEVEL",
+        "options": [
+          [
+            "HIGH",
+            "HIGH"
+          ],
+          [
+            "LOW",
+            "LOW"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "HIGH is true; LOW is false.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": "Boolean"
+  },
+  {
+    "type": "arduino_digital_write_value",
+    "message0": "write digital pin %1 state %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "STATE",
+        "check": "Boolean"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Write HIGH for true and LOW for false. Connect a condition or digital-state block.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_tone",
+    "message0": "play tone on pin %1 frequency %2 Hz for %3 ms",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "FREQUENCY",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "DURATION",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Play a tone on a buzzer pin. Frequency is clamped to 0\u201365535 Hz. Requires tone support in the selected board core.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_no_tone",
+    "message0": "stop tone on pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Stop a tone started with the tone block.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
   }
 ]

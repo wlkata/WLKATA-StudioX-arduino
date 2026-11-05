@@ -1,0 +1,12 @@
+const assert = require('assert');
+const { build } = require('../frontend/toolbox');
+const original={kind:'categoryToolbox',contents:[{kind:'category',name:'Logic',contents:[]},{kind:'category',name:'Python',contents:[]},{kind:'category',name:'Arduino',contents:[]}]};
+const before=JSON.stringify(original);
+const toolbox=build(original);
+assert.strictEqual(JSON.stringify(original),before);
+const arduino=toolbox.contents.find(item=>item.name==='Arduino');
+assert.deepStrictEqual(arduino.contents.map(item=>item.name),['Program','I/O','Timing','Serial']);
+const io=arduino.contents.find(item=>item.name==='I/O');
+assert.ok(io.contents.find(item=>item.type==='arduino_digital_write_value').inputs.STATE.shadow);
+assert.strictEqual(io.contents.find(item=>item.type==='arduino_analog_read').inputs.PIN.shadow.fields.PIN,'A0');
+console.log('Arduino toolbox passed: independent category structure and editable I/O defaults.');

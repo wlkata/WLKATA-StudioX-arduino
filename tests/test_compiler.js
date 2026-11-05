@@ -100,3 +100,19 @@ if (process.argv[2]) {
 }
 console.log('Arduino compiler passed: Blink, basic control flow, fixed variable types, loop context, disabled blocks, dormant shadows, unsupported blocks, and C++ string escaping.');
 module.exports = { blink, generated, snapshot, block, number, text, boolean, valid };
+
+const pin = name => block('arduino_pin', { PIN: name });
+const gpioSteps = [
+  block('arduino_pin_mode',{MODE:'INPUT_PULLUP'},{PIN:pin('2')}),
+  block('arduino_digital_write_value',{}, {PIN:pin('13'),STATE:block('arduino_digital_read',{}, {PIN:pin('2')})}),
+  block('arduino_analog_write',{}, {PIN:pin('9'),VALUE:number(128)}),
+  block('arduino_tone',{}, {PIN:pin('8'),FREQUENCY:number(440),DURATION:number(1000)}),
+  block('arduino_no_tone',{}, {PIN:pin('8')}),
+];
+gpioSteps.forEach((item,index)=>{if(gpioSteps[index+1]) item.next={block:gpioSteps[index+1]}});
+const gpio = valid(snapshot(block('arduino_setup', {}, { DO:gpioSteps[0] }))).code;
+assert.match(gpio,/INPUT_PULLUP/);assert.match(gpio,/\? HIGH : LOW/);assert.match(gpio,/tone\(/);assert.match(gpio,/noTone\(/);
+valid(snapshot(block('variables_set',{VAR:{id:'counter'}},{VALUE:block('arduino_analog_read',{}, {PIN:pin('A0')})})));
+valid(snapshot(block('arduino_digital_write_value',{}, {PIN:pin('13'),STATE:block('arduino_high_low',{LEVEL:'LOW'})})));
+for (const invalid of ['256','-1','A99','13;evil()','GP15']) assert.ok(compile(snapshot(block('arduino_no_tone',{}, {PIN:pin(invalid)}))).diagnostics.some(item=>/pin number/.test(item.message)));
+console.log('GPIO compiler passed: named pins, analog aliases, conditional digital output, state values, PWM, tone, and input validation.');

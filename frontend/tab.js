@@ -209,8 +209,8 @@
     if (!api || !api.getWorkspaceSnapshot || !api.getWorkspaceToolbox || !api.appendWorkspaceSnapshot || !api.pasteBlockClipboard) {
       message('This extension needs a StudioX version with independent-workspace transfer APIs.'); return;
     }
-    for (const asset of ['compiler', 'editor', 'managers']) {
-      const name = { compiler: 'StudioXArduinoCompiler', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
+    for (const asset of ['compiler', 'toolbox', 'editor', 'managers']) {
+      const name = { compiler: 'StudioXArduinoCompiler', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
       if (window[name]) continue;
       await new Promise((resolve, reject) => {
         const script = document.createElement('script'); script.src = new URL(asset + '.js', assetBase).href;
@@ -218,7 +218,7 @@
         document.body.appendChild(script);
       });
     }
-    const toolbox = await api.getWorkspaceToolbox();
+    const toolbox = window.StudioXArduinoToolbox.build(await api.getWorkspaceToolbox());
     editor = window.StudioXArduinoEditor.create(get('blockly'), {
       api, toolbox,
       scale: window.AppPreferences && AppPreferences.getBlockScale ? AppPreferences.getBlockScale() : 1,
