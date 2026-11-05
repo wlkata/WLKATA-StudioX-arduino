@@ -1,0 +1,47 @@
+<div class="arduino-app">
+  <header class="arduino-header"><h2>Arduino</h2><span id="arduino-saved-status">Independent workspace · saved locally</span></header>
+  <div class="arduino-toolbar" aria-label="Arduino programming toolbar">
+    <div class="arduino-toolbar-group">
+      <button type="button" class="arduino-button arduino-quiet" id="arduino-undo" title="Undo in Arduino workspace">Undo</button>
+      <button type="button" class="arduino-button arduino-quiet" id="arduino-redo" title="Redo in Arduino workspace">Redo</button>
+      <button type="button" class="arduino-button arduino-quiet" id="arduino-copy-blocks">Copy</button>
+      <button type="button" class="arduino-button arduino-quiet" id="arduino-paste-blocks">Paste</button>
+      <button type="button" class="arduino-button" id="arduino-import-main" title="Append a snapshot of all blocks from the main Blockly workspace">Import from Blockly</button>
+    </div>
+    <div class="arduino-toolbar-group arduino-target-controls">
+      <label>Board<select id="arduino-board"><option value="arduino:avr:uno">Arduino Uno</option></select></label>
+      <label>Port<select id="arduino-port"><option value="">Choose serial port</option><option value="manual">Enter port manually…</option></select></label>
+      <button type="button" class="arduino-button" id="arduino-compile" disabled>Compile</button>
+      <button type="button" class="arduino-button arduino-primary" id="arduino-upload" disabled>Upload</button>
+      <button type="button" class="arduino-button arduino-quiet" id="arduino-cancel" hidden>Cancel</button>
+      <details class="arduino-more" id="arduino-more"><summary class="arduino-button">More</summary><div class="arduino-more-menu">
+        <button type="button" id="arduino-save-blocks">Save blocks…</button>
+        <button type="button" id="arduino-import-file">Import blocks…</button>
+        <button type="button" id="arduino-clear-blocks">Clear Arduino workspace</button>
+        <hr>
+        <button type="button" id="arduino-refresh-devices">Refresh boards and ports</button>
+        <button type="button" id="arduino-install-core">Install board support</button>
+        <button type="button" id="arduino-settings-toggle">Arduino CLI settings</button>
+      </div></details>
+    </div>
+  </div>
+  <label id="arduino-manual-port-label" class="arduino-manual-port" hidden>Serial port<input id="arduino-manual-port" type="text" placeholder="COM3 or /dev/ttyACM0"></label>
+  <details class="arduino-cli-settings" id="arduino-cli-settings">
+    <summary>Arduino CLI settings</summary>
+    <p>Setup installs Arduino CLI automatically. If it is missing, use Re-setup in Settings → Extensions. You can also select an existing executable. <button type="button" class="arduino-button arduino-quiet" id="arduino-cli-guide">Installation guide ↗</button></p>
+    <div class="arduino-path-row"><input id="arduino-cli-path" type="text" placeholder="Automatic detection" aria-label="Arduino CLI executable path"><button type="button" class="arduino-button" id="arduino-save-cli">Save path</button></div>
+  </details>
+  <div class="arduino-statusbar"><span id="arduino-build-status" role="status">Checking workspace…</span><span id="arduino-tooling-status">Checking Arduino CLI…</span></div>
+  <div class="arduino-main">
+    <section class="arduino-canvas-panel" aria-label="Arduino block workspace"><div id="arduino-blockly" tabindex="0"></div></section>
+    <aside class="arduino-side-panel">
+      <section class="arduino-diagnostics"><div class="arduino-section-heading"><strong id="arduino-validation-status">Workspace</strong><button type="button" class="arduino-button arduino-quiet" id="arduino-toggle-highlights">Hide highlights</button></div><ul id="arduino-problems" aria-label="Arduino workspace problems"></ul></section>
+      <div class="arduino-output-tabs" role="tablist" aria-label="Arduino output">
+        <button type="button" id="arduino-code-tab" role="tab" aria-controls="arduino-code-panel" aria-selected="true">Code</button>
+        <button type="button" id="arduino-log-tab" role="tab" aria-controls="arduino-log-panel" aria-selected="false">Log</button>
+      </div>
+      <section class="arduino-code-panel" id="arduino-code-panel" role="tabpanel" aria-labelledby="arduino-code-tab"><div class="arduino-section-heading"><strong>Arduino C++</strong><button type="button" class="arduino-button arduino-quiet" id="arduino-copy-code">Copy code</button></div><textarea id="arduino-code" readonly spellcheck="false" aria-label="Generated Arduino C++"></textarea></section>
+      <section class="arduino-log-panel" id="arduino-log-panel" role="tabpanel" aria-labelledby="arduino-log-tab" hidden><div class="arduino-section-heading"><strong>Operation log</strong></div><pre id="arduino-log" tabindex="0" aria-label="Compilation and upload log">No operation has run yet.</pre></section>
+    </aside>
+  </div>
+</div>

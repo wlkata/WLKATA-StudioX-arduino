@@ -1,0 +1,32 @@
+{
+  "manifestVersion": 2,
+  "extensionApiVersion": 1,
+  "name": "arduino",
+  "displayName": "Arduino",
+  "version": "0.1.0",
+  "description": "An independent Blockly editor for basic Arduino C++ programs, compilation, and board upload.",
+  "contributes": {
+    "sidebarTab": {
+      "id": "arduino",
+      "label": "Arduino",
+      "icon": "frontend/icon.svg",
+      "html": "frontend/tab.html",
+      "js": "frontend/tab.js",
+      "css": "frontend/tab.css"
+    },
+    "backend": {
+      "main": "backend/main.py"
+    },
+    "blocks": {
+      "category": "Arduino",
+      "colour": "#00979D",
+      "files": [
+        "blocks/blocks.json"
+      ]
+    },
+    "setup": {
+      "python": "backend/setup.py"
+    }
+  },
+  "repository": "https://github.com/wlkata/WLKATA-StudioX-arduino"
+}

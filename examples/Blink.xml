@@ -1,0 +1,26 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="arduino_setup" id="blink_setup" x="40" y="40">
+    <statement name="DO">
+      <block type="arduino_pin_mode" id="blink_mode">
+        <field name="MODE">OUTPUT</field>
+        <value name="PIN"><block type="arduino_builtin_led" id="blink_pin_setup"/></value>
+      </block>
+    </statement>
+  </block>
+  <block type="arduino_loop" id="blink_loop" x="40" y="210">
+    <statement name="DO">
+      <block type="arduino_digital_write" id="blink_high">
+        <field name="LEVEL">HIGH</field>
+        <value name="PIN"><block type="arduino_builtin_led" id="blink_pin_high"/></value>
+        <next><block type="arduino_delay" id="blink_delay_high">
+          <value name="MS"><shadow type="math_number" id="blink_ms"><field name="NUM">500</field></shadow></value>
+          <next><block type="arduino_digital_write" id="blink_low">
+            <field name="LEVEL">LOW</field>
+            <value name="PIN"><block type="arduino_builtin_led" id="blink_pin_low"/></value>
+            <next><block type="arduino_delay" id="blink_delay_low"><value name="MS"><shadow type="math_number"><field name="NUM">500</field></shadow></value></block></next>
+          </block></next>
+        </block></next>
+      </block>
+    </statement>
+  </block>
+</xml>

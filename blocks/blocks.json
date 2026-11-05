@@ -1,0 +1,227 @@
+[
+  {
+    "type": "arduino_setup",
+    "message0": "Arduino on start %1",
+    "args0": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "inputsInline": false,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_loop",
+    "message0": "Arduino repeat forever %1",
+    "args0": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "inputsInline": false,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_pin_mode",
+    "message0": "set pin %1 mode %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "MODE",
+        "options": [
+          [
+            "output",
+            "OUTPUT"
+          ],
+          [
+            "input",
+            "INPUT"
+          ],
+          [
+            "input pull-up",
+            "INPUT_PULLUP"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_digital_write",
+    "message0": "write digital pin %1 %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "LEVEL",
+        "options": [
+          [
+            "HIGH",
+            "HIGH"
+          ],
+          [
+            "LOW",
+            "LOW"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_digital_read",
+    "message0": "read digital pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "output": "Boolean",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_analog_read",
+    "message0": "read analog pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_analog_write",
+    "message0": "write PWM pin %1 value %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "PWM output, clamped to 0–255. Use a PWM-capable pin on your board.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_delay",
+    "message0": "wait %1 milliseconds",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "MS",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_millis",
+    "message0": "milliseconds since start",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_builtin_led",
+    "message0": "built-in LED pin",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_serial_begin",
+    "message0": "start serial at %1 baud",
+    "args0": [
+      {
+        "type": "field_number",
+        "name": "BAUD",
+        "value": 9600,
+        "min": 300,
+        "max": 2000000,
+        "precision": 1
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_serial_print",
+    "message0": "serial print %1 %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "VALUE"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "NEWLINE",
+        "options": [
+          [
+            "with newline",
+            "TRUE"
+          ],
+          [
+            "without newline",
+            "FALSE"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  }
+]
