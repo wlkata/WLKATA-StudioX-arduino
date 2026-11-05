@@ -94,6 +94,12 @@ app.whenReady().then(async () => {
     await win.loadFile(html);await bootstrap();
     assert.strictEqual(await run('az===ws'),false);
     assert.strictEqual(await run('az.getAllBlocks(false).length'),0,'Arduino starts empty instead of mirroring main');
+    await run("document.getElementById('arduino-add-entries').click()");
+    await wait('az.getTopBlocks(false).length===2');
+    await wait("!document.getElementById('arduino-compile').disabled");
+    assert.match(await run("document.getElementById('arduino-code').value"),/void setup\(\).*void loop\(/s);
+    await run("document.getElementById('arduino-undo').click()");
+    await wait('az.getTopBlocks(false).length===0');
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),4);
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
@@ -102,6 +108,8 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     assert.strictEqual(await run('az.getTopBlocks(false).length'),2);
     assert.strictEqual(await run('getWorkspace()===ws'),true,'global primary editor must stay unchanged');
+    await run("document.getElementById('arduino-add-entries').click()");
+    assert.strictEqual(await run('az.getTopBlocks(false).length'),2,'starter action must not duplicate existing entries');
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
     await run("window.delay=az.getBlocksByType('arduino_delay',false)[0].getInputTargetBlock('MS');document.getElementById('arduino-compile').click()");
     await wait("document.getElementById('arduino-build-status').textContent.includes('Compiled successfully')");

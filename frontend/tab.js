@@ -235,6 +235,12 @@
       try { const blocks = editor.paste(); message(blocks.length ? 'Pasted blocks into Arduino.' : 'Copy blocks first.'); }
       catch (error) { message(error.message); }
     });
+    get('add-entries').addEventListener('click', () => {
+      try {
+        const blocks = editor.addEntryBlocks();
+        message(blocks.length ? 'Added missing Setup / Loop blocks.' : 'Setup and Loop are already in the Arduino workspace.');
+      } catch (error) { message(error.message); }
+    });
     get('import-main').addEventListener('click', async () => {
       try {
         const source = await api.getWorkspaceSnapshot();

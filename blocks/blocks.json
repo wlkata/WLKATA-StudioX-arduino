@@ -1,7 +1,7 @@
 [
   {
     "type": "arduino_setup",
-    "message0": "Arduino on start %1",
+    "message0": "Setup (run once) %1",
     "args0": [
       {
         "type": "input_statement",
@@ -9,13 +9,13 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "tooltip": "Code inside runs once when the board powers on or resets. Generates setup(). Use one Setup block at the top level.",
     "inputsInline": false,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
   },
   {
     "type": "arduino_loop",
-    "message0": "Arduino repeat forever %1",
+    "message0": "Loop (repeat forever) %1",
     "args0": [
       {
         "type": "input_statement",
@@ -23,7 +23,7 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "tooltip": "Code inside repeats after Setup finishes. Generates loop(). Use one Loop block at the top level.",
     "inputsInline": false,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
   },

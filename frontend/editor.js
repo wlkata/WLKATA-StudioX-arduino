@@ -94,6 +94,15 @@
       reveal(blocks);
       return blocks;
     }
+    function addEntryBlocks() {
+      const types = ['arduino_setup', 'arduino_loop'];
+      const missing = types.filter(type => !workspace.getBlocksByType(type, false).length);
+      if (!missing.length) {
+        reveal([workspace.getBlocksByType('arduino_setup', false)[0]]);
+        return [];
+      }
+      return append({ blocks: { languageVersion: 0, blocks: missing.map((type, index) => ({ type, x: 40, y: 40 + index * 200 })) } });
+    }
     function importText(text) {
       if (!String(text).trim().startsWith('<')) return append(JSON.parse(text));
       const xml = Blockly.utils.xml.textToDom(text);
@@ -180,7 +189,7 @@
     window.addEventListener('beforeunload', saveRecovery);
     applyTheme();resize();
     return {
-      workspace, snapshot, append, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
+      workspace, snapshot, append, addEntryBlocks, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
       activate: () => { workspace.markFocused(); resize(); },
       exportState: () => recoveryLocked ? originalRecovery : snapshot().state,
       recoveryLocked: () => recoveryLocked,

@@ -116,8 +116,10 @@ the original saved data is preserved until the user explicitly clears it.
 | Variables | Get, set, numeric change; one inferred number, boolean, or text type per variable |
 | Text | Literals, join, append, length, empty check, print to Serial |
 
-Use one Arduino on start block for `setup()` and one Arduino repeat forever
-block for `loop()`. Additional top-level statement stacks run once in `setup()`
+Use one Setup (run once) block for `setup()` and one Loop (repeat forever) block
+for `loop()`. Find them under Arduino → Program, or click Setup / Loop in the
+toolbar to insert whichever entries are missing. That action is undoable and
+does not duplicate existing entries. Additional top-level statement stacks run once in `setup()`
 in their workspace position order. Standalone value blocks must be connected
 before compiling. Break/continue must be inside a Blockly loop, not directly
 inside the Arduino repeat forever entry block.
