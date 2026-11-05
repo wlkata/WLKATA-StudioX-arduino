@@ -15,8 +15,9 @@ the Arduino tab lists each problem and selects its block in the Arduino canvas. 
 Upload stay unavailable until the workspace is supported. Turning off visual
 highlights does not bypass validation. Disabled blocks are omitted.
 
-This version does not implement robot commands, Python/import blocks, lists,
-functions, workflows, or other extensions' blocks. These can be added later
+This version does not implement robot commands, Python blocks, lists, Blockly
+functions, workflows, or other extensions' blocks. Arduino C++ includes and
+native C++ blocks are available for using libraries. These can be added later
 without replacing the editor.
 
 ## Install
@@ -144,6 +145,38 @@ blocks produce diagnostics. Code preview is available for inspection even when
 invalid, but it cannot be compiled or uploaded through the UI until corrected.
 Existing Python code generation is unchanged. Running Arduino blocks through
 Python reports that they must be compiled from the Arduino tab.
+
+## Arduino libraries and C++
+
+More → Libraries opens the Library manager. Search the Arduino library catalog,
+choose a version, and install it with its dependencies. Installed shows the
+libraries in this extension's sketchbook. Refresh index fetches updated catalog
+metadata. Library installation shares the operation lock with board installation,
+compilation, and upload; a package change invalidates the previous Upload result.
+Libraries and caches stay in `.data/toolchain`, separate from Arduino IDE.
+
+Choose Add include on an installed library to insert its advertised header(s) as
+blocks. The manual header field also supports built-in headers such as `Wire.h`.
+Existing include blocks are reused rather than duplicated. An include block
+emits `#include <Header.h>` before global declarations; it does not download a
+library itself. Include blocks are portable with saved/copied workspaces.
+
+Arduino → Libraries / C++ contains:
+
+- Include library header — top-level `#include`, without quotes or angle brackets.
+- C++ declaration — top-level instances/globals such as `Servo myServo;`.
+- C++ statement — code inside Setup or Loop, such as `myServo.attach(9);` or
+  `myServo.write(90);`.
+- C++ value — an expression such as `myServo.read()`, with a declared number,
+  boolean, or text result so it can connect to other blocks.
+
+For a servo: install Servo, add its `Servo.h` include, declare `Servo myServo;`,
+attach it in Setup, and call it from Loop. These are native Arduino C++ APIs;
+Python imports and Python library-call blocks cannot be used here. Installing a
+library does not automatically create Blockly wrappers for all its functions.
+The selected board and installed library must support those APIs. C++ syntax and
+API errors are reported by the Arduino compiler in the operation log. No library
+code runs on the computer merely because an include block is added.
 
 ## Compile and upload
 

@@ -33,6 +33,7 @@
         block('arduino_tone', { PIN: pin('8'), FREQUENCY: number(440), DURATION: number(1000) }),
         block('arduino_no_tone', { PIN: pin('8') }),
       ]),
+      group('Libraries / C++', [block('arduino_include'), block('arduino_cpp_declaration'), block('arduino_cpp_statement'), block('arduino_cpp_expression')]),
       group('Timing', [block('arduino_delay', { MS: number(1000) }), block('arduino_millis')]),
       group('Serial', [block('arduino_serial_begin'), block('arduino_serial_print', { VALUE: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } })]),
     ]));

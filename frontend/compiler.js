@@ -5,13 +5,13 @@
     'math_number', 'math_arithmetic', 'math_single', 'math_round', 'math_modulo', 'math_constant',
     'logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'logic_ternary',
     'variables_get', 'text', 'text_join', 'text_length', 'text_isEmpty',
-    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low',
+    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low', 'arduino_cpp_expression',
   ]);
   const statements = new Set([
     'variables_set', 'math_change', 'text_append', 'text_print', 'controls_if',
     'controls_repeat_ext', 'controls_repeat', 'controls_whileUntil', 'controls_for', 'controls_flow_statements',
     'arduino_setup', 'arduino_loop', 'arduino_pin_mode', 'arduino_digital_write',
-    'arduino_analog_write', 'arduino_digital_write_value', 'arduino_tone', 'arduino_no_tone', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
+    'arduino_include', 'arduino_cpp_declaration', 'arduino_cpp_statement', 'arduino_analog_write', 'arduino_digital_write_value', 'arduino_tone', 'arduino_no_tone', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
   ]);
   const types = { number: 'double', boolean: 'bool', text: 'String' };
   const defaults = { number: '0', boolean: 'false', text: 'String("")' };
@@ -47,6 +47,8 @@
     let sequence = 0;
     let usesSerial = false;
     let hasSerialBegin = false;
+    const includes = new Set(['Arduino.h', 'math.h']);
+    const nativeGlobals = [];
     function error(block, message) {
       const key = (block && block.id || '') + ':' + message;
       if (!diagnosticKeys.has(key)) {
@@ -80,6 +82,7 @@
     function infer(block) {
       if (!block || disabled(block)) return null;
       if (block.type === 'variables_get') return variable(block).type;
+      if (block.type === 'arduino_cpp_expression') return types[field(block, 'RETURN_TYPE')] ? field(block, 'RETURN_TYPE') : 'number';
       if (block.type === 'logic_ternary') return infer(child(block, 'THEN')) || infer(child(block, 'ELSE'));
       if (['logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'text_isEmpty', 'arduino_digital_read', 'arduino_high_low'].includes(block.type)) return 'boolean';
       if (['text', 'text_join'].includes(block.type)) return 'text';
@@ -102,16 +105,33 @@
     for (const value of variables.values()) if (!value.type) value.type = 'number';
     for (const { block, parent } of nodes) {
       if (!expressions.has(block.type) && !statements.has(block.type)) {
-        error(block, 'Unsupported Arduino block: ' + block.type + '. Robot, Python/import, libraries, lists, and functions are not supported in this version.');
+        error(block, 'Unsupported Arduino block: ' + block.type + '. Robot, Python, lists, and Blockly functions are not supported in this version.');
       }
       if ((block.type === 'arduino_setup' || block.type === 'arduino_loop') && parent) {
         error(block, 'Place Arduino setup and loop blocks at the top level.');
       }
       if (block.type === 'arduino_serial_begin') hasSerialBegin = true;
+      if (['arduino_include', 'arduino_cpp_declaration'].includes(block.type) && parent) error(block, 'Place library includes and C++ declarations at the top level.');
+      if (block.type === 'arduino_include') {
+        const header = String(field(block, 'HEADER', '')).trim();
+        if (!/^[A-Za-z0-9_][A-Za-z0-9_./+-]*$/.test(header) || header.length > 200 || header.split('/').some(part => ['', '.', '..'].includes(part))) {
+          error(block, 'Enter a header name such as Servo.h without quotes, angle brackets, or parent paths.');
+        } else includes.add(header);
+      }
+      if (block.type === 'arduino_cpp_declaration') nativeGlobals.push(nativeCode(block));
+
     }
     for (const wrapper of ['arduino_setup', 'arduino_loop']) {
       const found = nodes.filter(item => item.block.type === wrapper);
       if (found.length > 1) found.forEach(item => error(item.block, 'Use only one ' + wrapper.replace('arduino_', '') + ' block.'));
+    }
+    function nativeCode(block) {
+      const code = String(field(block, 'CODE', '')).trim();
+      if (!code || code.length > 8192 || code.includes('\0')) {
+        error(block, 'Enter C++ code of at most 8192 characters without null bytes.');
+        return '';
+      }
+      return code;
     }
     function exprInput(block, input, expected, fallback) {
       const nested = child(block, input);
@@ -196,6 +216,13 @@
         case 'arduino_analog_read': return number('analogRead((uint8_t)(' + n('PIN') + '))');
         case 'arduino_millis': return number('millis()');
         case 'arduino_builtin_led': return number('LED_BUILTIN');
+        case 'arduino_cpp_expression': {
+          const type = field(block, 'RETURN_TYPE');
+          if (!types[type]) error(block, 'Choose a C++ expression return type.');
+          const code = nativeCode(block) || '0';
+          return { code: type === 'text' ? 'String(' + code + ')' : '(' + code + ')', type: types[type] ? type : 'number' };
+        }
+
         case 'arduino_pin': {
           const pin = String(field(block, 'PIN', '')).trim();
           if (/^(?:[0-9]{1,3})$/.test(pin) && Number(pin) <= 255) return number(String(Number(pin)));
@@ -295,6 +322,8 @@
           if (!['HIGH', 'LOW'].includes(level)) error(block, 'Choose HIGH or LOW.');
           return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), ' + (level === 'HIGH' ? 'HIGH' : 'LOW') + ');');
         }
+        case 'arduino_include': case 'arduino_cpp_declaration': return '';
+        case 'arduino_cpp_statement': return nativeCode(block).split('\n').map(code => line(code)).join('');
         case 'arduino_digital_write_value':
           return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), (' + value('STATE', 'boolean') + ') ? HIGH : LOW);');
         case 'arduino_tone':
@@ -332,8 +361,8 @@
     for (const value of variables.values()) globals += types[value.type] + ' ' + value.cpp + ' = ' + defaults[value.type] + ';\n';
     const modulo = nodes.some(item => item.block.type === 'math_modulo')
       ? 'static double studioxModulo(double a, double b) {\n  double r = fmod(a, b);\n  return r != 0 && ((r < 0) != (b < 0)) ? r + b : r;\n}\n\n' : '';
-    const code = '// Generated by WLKATA StudioX Arduino.\n#include <Arduino.h>\n#include <math.h>\n\n' + modulo +
-      globals + (globals ? '\n' : '') + 'void setup() {\n' + setup + '}\n\nvoid loop() {\n' + loop + '}\n';
+    const code = '// Generated by WLKATA StudioX Arduino.\n' + [...includes].map(header => '#include <' + header + '>\n').join('') + '\n' + modulo +
+      nativeGlobals.map(code => code + '\n').join('') + (nativeGlobals.length ? '\n' : '') + globals + (globals ? '\n' : '') + 'void setup() {\n' + setup + '}\n\nvoid loop() {\n' + loop + '}\n';
     return { code, diagnostics, supportedBlockTypes: supportedBlockTypes.slice() };
   }
   const api = { compile, supportedBlockTypes, cppString };

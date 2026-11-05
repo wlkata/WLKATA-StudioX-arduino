@@ -21,6 +21,7 @@
         <button type="button" id="arduino-clear-blocks">Clear Arduino workspace</button>
         <hr>
         <button type="button" id="arduino-refresh-devices">Refresh boards and ports</button>
+        <button type="button" id="arduino-manage-libraries">Libraries…</button>
         <button type="button" id="arduino-manage-boards">Boards manager…</button>
         <button type="button" id="arduino-install-core">Install board support</button>
         <button type="button" id="arduino-settings-toggle">Arduino CLI settings</button>
@@ -53,5 +54,13 @@
     <details><summary>Additional board package URLs</summary><p>Add manufacturer package indexes when a board is not in the default catalog.</p><textarea id="arduino-board-sources" rows="3" aria-label="Additional board package URLs" placeholder="One HTTPS URL per line"></textarea><div class="arduino-manager-search"><button type="button" class="arduino-button" id="arduino-board-pico-source">Add Arduino-Pico source</button><button type="button" class="arduino-button" id="arduino-board-save-sources">Save and refresh</button></div></details>
     <p id="arduino-board-manager-status" role="status"></p><div id="arduino-board-results" class="arduino-manager-results"></div>
     <pre id="arduino-board-manager-log" class="arduino-manager-log" hidden></pre><button type="button" class="arduino-button" id="arduino-board-manager-cancel" hidden>Cancel operation</button>
+  </dialog>
+  <dialog id="arduino-library-manager" class="arduino-manager">
+    <div class="arduino-section-heading"><h3>Libraries</h3><button type="button" class="arduino-button arduino-quiet" id="arduino-library-manager-close">Close</button></div>
+    <p>Install Arduino libraries, then add their headers to this workspace. Use C++ blocks to declare instances and call their APIs.</p>
+    <form id="arduino-library-search-form" class="arduino-manager-search"><input id="arduino-library-query" placeholder="Search libraries, e.g. Servo" aria-label="Search Arduino libraries"><button class="arduino-button" type="submit">Search</button><button type="button" class="arduino-button" id="arduino-library-installed">Installed</button><button type="button" class="arduino-button" id="arduino-library-refresh">Refresh index</button></form>
+    <form id="arduino-library-include-form" class="arduino-manager-search"><input id="arduino-library-header" placeholder="Header name, e.g. Wire.h" aria-label="Library header to include"><button type="submit" class="arduino-button">Add include</button></form>
+    <p id="arduino-library-manager-status" role="status"></p><div id="arduino-library-results" class="arduino-manager-results"></div>
+    <pre id="arduino-library-manager-log" class="arduino-manager-log" hidden></pre><button type="button" class="arduino-button" id="arduino-library-manager-cancel" hidden>Cancel operation</button>
   </dialog>
 </div>

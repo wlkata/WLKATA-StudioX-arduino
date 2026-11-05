@@ -7,6 +7,8 @@ const get = id => block('variables_get', { VAR: { id } });
 const print = value => block('text_print', {}, { TEXT: value });
 const items = [
   block('arduino_serial_begin', { BAUD: 9600 }),
+  block('arduino_cpp_statement', { CODE: 'libraryCounter += 1;' }),
+  print(block('arduino_cpp_expression', { CODE: 'libraryCounter', RETURN_TYPE: 'number' })),
   block('variables_set', { VAR: { id: 'counter' } }, { VALUE: number(0) }),
   block('math_change', { VAR: { id: 'counter' } }, { DELTA: number(1) }),
   block('variables_set', { VAR: { id: 'label' } }, { VALUE: text('UTF-8 中文 " \\ \0') }),
@@ -38,7 +40,7 @@ for (const op of ['ROOT', 'ABS', 'NEG', 'LN', 'LOG10', 'EXP', 'POW10']) items.pu
 for (const op of ['ROUND', 'ROUNDUP', 'ROUNDDOWN']) items.push(print(block('math_round', { OP: op }, { NUM: number(3.5) })));
 const join = block('text_join', {}, { ADD0: text('value='), ADD1: number(5) });join.extraState={itemCount:2};items.push(print(join));
 for (let i = 0; i < items.length - 1; i++) items[i].next = { block: items[i + 1] };
-const state = snapshot(block('arduino_setup', {}, { DO: items[0] }), block('arduino_loop', {}, { DO:
+const state = snapshot(block('arduino_include', {HEADER:'Wire.h'}), block('arduino_cpp_declaration', {CODE:'int libraryCounter = 0;'}), block('arduino_setup', {}, { DO: items[0] }), block('arduino_loop', {}, { DO:
   block('arduino_digital_write', { LEVEL: 'HIGH' }, { PIN: block('arduino_builtin_led') }, block('arduino_delay', {}, { MS: number(1) })) }));
 state.variables.push({ id: 'label', name: 'class' });
 const generated = compile(state);

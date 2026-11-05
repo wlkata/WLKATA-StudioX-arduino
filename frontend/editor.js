@@ -94,6 +94,11 @@
       reveal(blocks);
       return blocks;
     }
+    function addIncludes(headers) {
+      const existing = new Set(workspace.getBlocksByType('arduino_include', false).map(block => block.getFieldValue('HEADER').trim()));
+      const missing = [...new Set(headers)].filter(header => !existing.has(header));
+      return append({ blocks: { languageVersion: 0, blocks: missing.map((header, index) => ({ type: 'arduino_include', fields: { HEADER: header }, x: 40, y: 40 + index * 80 })) } });
+    }
     function addEntryBlocks() {
       const types = ['arduino_setup', 'arduino_loop'];
       const missing = types.filter(type => !workspace.getBlocksByType(type, false).length);
@@ -189,7 +194,7 @@
     window.addEventListener('beforeunload', saveRecovery);
     applyTheme();resize();
     return {
-      workspace, snapshot, append, addEntryBlocks, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
+      workspace, snapshot, append, addIncludes, addEntryBlocks, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
       activate: () => { workspace.markFocused(); resize(); },
       exportState: () => recoveryLocked ? originalRecovery : snapshot().state,
       recoveryLocked: () => recoveryLocked,

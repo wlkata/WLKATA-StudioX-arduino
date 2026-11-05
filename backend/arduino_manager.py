@@ -120,9 +120,12 @@ class ArduinoManager:
         return {'success': True, 'boards': list(known.values())}
 
     def search_boards(self, query=''):
-        if not isinstance(query, str) or len(query) > 200 or query.startswith('-'):
+        if not isinstance(query, str) or len(query) > 200 or query.strip().startswith('-'):
             raise ValueError('Enter a board name of at most 200 characters.')
-        data = self._json(['core', 'search'] + ([query.strip()] if query.strip() else []))
+        with self._lock:
+            if self._active:
+                raise RuntimeError('Wait for the active operation before searching boards.')
+            data = self._json(['core', 'search'] + ([query.strip()] if query.strip() else []))
         platforms = []
         for item in data.get('platforms') or []:
             latest = item.get('latest_version', '')
@@ -165,6 +168,52 @@ class ArduinoManager:
             self._run(job, ['core', 'update-index'])
             self._run(job, ['core', 'install', target])
         return self._new_job('core', None, install)
+
+    def libraries(self):
+        payload = self._json(['lib', 'list'])
+        libraries = []
+        for item in payload.get('installed_libraries') or []:
+            library = item.get('library') or {}
+            libraries.append({'name': library['name'], 'version': library.get('version', ''),
+                              'installedVersion': library.get('version', ''),
+                              'description': library.get('sentence', ''),
+                              'headers': library.get('provides_includes') or [],
+                              'architectures': library.get('architectures') or [],
+                              'versions': [library.get('version', '')]})
+        return {'success': True, 'libraries': sorted(libraries, key=lambda item: item['name'].lower())}
+
+    def search_libraries(self, query):
+        if not isinstance(query, str) or not query.strip() or len(query) > 200 or query.strip().startswith('-'):
+            raise ValueError('Enter a library name of at most 200 characters.')
+        # CLI may refresh the library index while searching. Serialize it with
+        # installs and compilations, whose package files must stay stable.
+        with self._lock:
+            if self._active:
+                raise RuntimeError('Wait for the active operation before searching libraries.')
+            payload = self._json(['lib', 'search', query.strip(), '--omit-releases-details'])
+            installed = {item['name']: item for item in self.libraries()['libraries']}
+        libraries = []
+        for item in payload.get('libraries') or []:
+            latest = item.get('latest') or {}
+            local = installed.get(item['name'], {})
+            libraries.append({'name': item['name'], 'version': latest.get('version', ''),
+                              'installedVersion': local.get('version', ''),
+                              'description': latest.get('sentence', ''),
+                              'headers': local.get('headers', []),
+                              'architectures': latest.get('architectures') or [],
+                              'versions': item.get('available_versions') or [latest.get('version', '')]})
+        return {'success': True, 'libraries': libraries[:100], 'total': len(libraries)}
+
+    def refresh_library_index(self):
+        return self._new_job('library-index', None, lambda job: self._run(job, ['lib', 'update-index']))
+
+    def install_library(self, name, version=''):
+        if not isinstance(name, str) or not re.fullmatch(r'[\w][\w .+-]{0,199}', name):
+            raise ValueError('Choose a valid Arduino library name.')
+        if not isinstance(version, str) or len(version) > 80 or version and not re.fullmatch(r'[0-9][A-Za-z0-9_.+-]*', version):
+            raise ValueError('Choose a valid library version.')
+        target = name + ('@' + version if version else '')
+        return self._new_job('library', None, lambda job: self._run(job, ['lib', 'install', target]))
 
     def ports(self):
         data = self._json(['board', 'list'])

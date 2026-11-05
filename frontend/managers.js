@@ -1,6 +1,6 @@
 /* Board and library installation dialogs; device operations use the shared job lock. */
 (function (root) {
-  function create({ get, request, runToolJob, cancelOperation }) {
+  function create({ get, request, runToolJob, cancelOperation, addIncludes }) {
     const dialog = get('board-manager');
     const status = text => { get('board-manager-status').textContent = text; };
     let searching = 0, working = false;
@@ -62,12 +62,84 @@
       if (!urls.includes(url)) urls.push(url);
       get('board-sources').value = urls.join('\n'); status('Click Save and refresh to enable the Arduino-Pico catalog.');
     });
-    return { openBoards: async () => {
+    const libraryUI = createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, element });
+    return { openLibraries: libraryUI.open, openBoards: async () => {
       if (!dialog.open) dialog.showModal();
       try { const sources = await request('/boards/sources'); get('board-sources').value = sources.urls.join('\n'); }
       catch (error) { status(error.message); return; }
       await search(); get('board-query').focus();
     } };
+  }
+  function createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, element }) {
+    const dialog = get('library-manager');
+    const status = text => { get('library-manager-status').textContent = text; };
+    let working = false, token = 0, installedOnly = true;
+    function lock(value) {
+      working = value;
+      dialog.querySelectorAll('button, input, select').forEach(node => {
+        if (node.id !== 'arduino-library-manager-close' && node.id !== 'arduino-library-manager-cancel') node.disabled = value;
+      });
+      get('library-manager-cancel').hidden = !value;
+    }
+    function include(headers) {
+      try { addIncludes(headers); dialog.close(); }
+      catch (error) { status(error.message); }
+    }
+    async function list(local = installedOnly) {
+      installedOnly = local;
+      const current = ++token;
+      status(local ? 'Loading installed libraries…' : 'Searching libraries…');
+      try {
+        const response = local ? await request('/libraries') : await request('/libraries/search', { query: get('library-query').value });
+        if (current !== token) return;
+        get('library-results').replaceChildren();
+        response.libraries.forEach(library => {
+          const card = element('div', '', 'arduino-manager-card');
+          card.appendChild(element('h4', library.name));
+          card.appendChild(element('p', library.description || ''));
+          card.appendChild(element('p', library.installedVersion ? 'Installed: ' + library.installedVersion : 'Not installed'));
+          card.appendChild(element('p', 'Architectures: ' + library.architectures.join(', ')));
+          const controls = element('div', '', 'arduino-manager-search');
+          const versions = document.createElement('select'); versions.setAttribute('aria-label', library.name + ' version');
+          [...new Set([library.version, ...(library.versions || []).slice().reverse()])].filter(Boolean).forEach(version => {
+            const option = element('option', version); option.value = version; versions.appendChild(option);
+          });
+          controls.appendChild(versions);
+          const install = element('button', library.installedVersion ? 'Install selected version' : 'Install', 'arduino-button');
+          install.type = 'button'; install.dataset.library = library.name;
+          install.addEventListener('click', () => perform('/libraries/install', { name: library.name, version: versions.value }, 'Library installed. Add its include header to use it in this workspace.'));
+          controls.appendChild(install);
+          if (library.headers && library.headers.length) {
+            const add = element('button', 'Add include', 'arduino-button'); add.type = 'button';
+            add.dataset.headers = library.headers.join(', '); add.title = library.headers.join(', ');
+            add.addEventListener('click', () => include(library.headers)); controls.appendChild(add);
+          }
+          card.appendChild(controls); get('library-results').appendChild(card);
+        });
+        status(local ? (response.libraries.length ? 'Installed libraries. Search to discover more.' : 'No user libraries installed. Search to discover libraries, or enter a built-in header above.') :
+          response.libraries.length ? (response.total > response.libraries.length ? 'Showing the first 100 libraries. Refine your search.' : response.libraries.length + ' library result(s).') : 'No libraries found. Try another name or refresh the index.');
+      } catch (error) { if (current === token) status(error.message); }
+    }
+    async function perform(path, body, success) {
+      if (working) return;
+      lock(true); status('Working…'); get('library-manager-log').hidden = false;
+      try {
+        await runToolJob(path, body, job => { get('library-manager-log').textContent = job.log.join('\n'); });
+        await list(); status(success);
+      } catch (error) { status(error.message); }
+      finally { lock(false); }
+    }
+    get('library-manager-close').addEventListener('click', () => dialog.close());
+    get('library-search-form').addEventListener('submit', event => { event.preventDefault(); if (!working) list(false); });
+    get('library-installed').addEventListener('click', () => { if (!working) list(true); });
+    get('library-refresh').addEventListener('click', () => perform('/libraries/refresh', {}, 'Library index refreshed.'));
+    get('library-manager-cancel').addEventListener('click', () => cancelOperation().catch(error => status(error.message)));
+    get('library-include-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const header = get('library-header').value.trim();
+      if (!working && header) include([header]);
+    });
+    return { open: async () => { if (!dialog.open) dialog.showModal(); await list(true); get('library-query').focus(); } };
   }
   root.StudioXArduinoManagers = { create };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -325,5 +325,82 @@
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
     "previousStatement": null,
     "nextStatement": null
+  },
+  {
+    "type": "arduino_include",
+    "message0": "include library header %1",
+    "args0": [
+      {
+        "type": "field_input",
+        "name": "HEADER",
+        "text": "Servo.h"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Adds #include <header> before declarations. Place at the top level. Install external libraries using the Libraries manager.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_cpp_declaration",
+    "message0": "C++ declaration %1",
+    "args0": [
+      {
+        "type": "field_input",
+        "name": "CODE",
+        "text": "Servo myServo;"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "A C++ global declaration for a library instance or helper. Place at the top level. Arduino compiler validates the text.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_cpp_statement",
+    "message0": "C++ statement %1",
+    "args0": [
+      {
+        "type": "field_input",
+        "name": "CODE",
+        "text": "myServo.write(90);"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Native Arduino C++ statements inside Setup, Loop, or a Blockly control structure. Arduino compiler validates the text.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_cpp_expression",
+    "message0": "C++ value %1 type %2",
+    "args0": [
+      {
+        "type": "field_input",
+        "name": "CODE",
+        "text": "myServo.read()"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "RETURN_TYPE",
+        "options": [
+          [
+            "number",
+            "number"
+          ],
+          [
+            "boolean",
+            "boolean"
+          ],
+          [
+            "text",
+            "text"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Native Arduino C++ expression. Choose its return type so Blockly can validate connections.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null
   }
 ]

@@ -30,7 +30,7 @@
     get('install-core').disabled = busy || !available;
     get('cancel').hidden = !busy;
     get('cancel').disabled = !operation;
-    ['board', 'port', 'manual-port', 'save-cli', 'refresh-devices', 'manage-boards'].forEach(id => { get(id).disabled = busy; });
+    ['board', 'port', 'manual-port', 'save-cli', 'refresh-devices', 'manage-boards', 'manage-libraries'].forEach(id => { get(id).disabled = busy; });
     get('undo').disabled = !editor || !editor.workspace.getUndoStack().length;
     get('redo').disabled = !editor || !editor.workspace.getRedoStack().length;
     get('copy-blocks').disabled = !editor || !editor.selected();
@@ -276,8 +276,9 @@
     get('compile').addEventListener('click', () => perform('compile'));
     get('upload').addEventListener('click', () => perform('upload'));
     menuAction('install-core', () => perform('core'));
-    const managers = window.StudioXArduinoManagers.create({ get, request, runToolJob, cancelOperation });
+    const managers = window.StudioXArduinoManagers.create({ get, request, runToolJob, cancelOperation, addIncludes: headers => { const added = editor.addIncludes(headers); message(added.length ? 'Added library include blocks.' : 'These headers are already included.'); return added; } });
     menuAction('manage-boards', () => managers.openBoards());
+    menuAction('manage-libraries', () => managers.openLibraries());
     get('cancel').addEventListener('click', async () => {
       if (!operation) return;
       try { await request('/jobs/' + operation + '/cancel', {}); message('Cancelling operation…'); }

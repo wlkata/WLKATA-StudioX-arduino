@@ -48,16 +48,18 @@ app.whenReady().then(async () => {
       document.getElementById('main-tab').onclick=()=>showTab('blockly');
       document.getElementById('arduino-tab').onclick=()=>showTab('arduino');
       initBlockSelection();showTab('arduino');
-      window.calls=[];window.jobs={};window.jobCounter=0;window.holdCompile=false;window.cliAvailable=true;
+      window.calls=[];window.jobs={};window.jobCounter=0;window.holdCompile=false;window.cliAvailable=true;window.libraryInstalled=false;
       ExtensionAPI.fetch=async(name,endpoint,options)=>{
         const body=options&&options.body?JSON.parse(options.body):null;calls.push({endpoint,body});
         if(endpoint==='/status')return {success:true,available:cliAvailable,cliPath:'/test/arduino-cli',version:{VersionString:'test'},error:'Install Arduino CLI'};
+        if(endpoint==='/libraries')return {success:true,libraries:libraryInstalled?[{name:'Servo',version:'1.3.0',installedVersion:'1.3.0',headers:['Servo.h'],architectures:['avr'],versions:['1.3.0']}]:[]};
+        if(endpoint==='/libraries/search')return {success:true,total:1,libraries:[{name:'Servo',version:'1.3.0',installedVersion:libraryInstalled?'1.3.0':'',description:'Servo control',headers:libraryInstalled?['Servo.h']:[],architectures:['avr'],versions:['1.2.2','1.3.0']}]};
         if(endpoint==='/boards/sources')return {success:true,urls:[]};
         if(endpoint==='/boards/search')return {success:true,total:1,platforms:[{id:'arduino:mbed_rp2040',name:'Pico boards',version:'4.3.1',installedVersion:'',boards:['Raspberry Pi Pico']}]};
         if(endpoint==='/boards')return {success:true,boards:[{name:'Uno',fqbn:'arduino:avr:uno'},{name:'Mega',fqbn:'arduino:avr:mega:cpu=atmega2560'}]};
         if(endpoint==='/ports')return {success:true,ports:[{address:'COM9',label:'Test Arduino'}]};
-        if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'||endpoint==='/boards/install'||endpoint==='/boards/refresh'){
-          const id='job'+(++jobCounter);jobs[id]={id,success:true,ok:true,done:endpoint!=='/compile'||!holdCompile,log:['ok']};
+        if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'||endpoint==='/boards/install'||endpoint==='/boards/refresh'||endpoint==='/libraries/install'||endpoint==='/libraries/refresh'){
+          if(endpoint==='/libraries/install')libraryInstalled=true;const id='job'+(++jobCounter);jobs[id]={id,success:true,ok:true,done:endpoint!=='/compile'||!holdCompile,log:['ok']};
           return {success:true,jobId:id};
         }
         if(endpoint.startsWith('/jobs/'))return jobs[endpoint.split('/')[2]];
@@ -177,6 +179,24 @@ app.whenReady().then(async () => {
     await run("document.getElementById('arduino-board-pico-source').click()");
     assert.match(await run("document.getElementById('arduino-board-sources').value"),/package_rp2040_index.json/);
     await run("document.getElementById('arduino-board-manager-close').click()");
+    await run("document.getElementById('arduino-manage-libraries').click()");
+    await wait("document.getElementById('arduino-library-manager-status').textContent.includes('No user libraries')");
+    await run("document.getElementById('arduino-library-query').value='Servo';document.getElementById('arduino-library-search-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))");
+    await wait("document.querySelector('#arduino-library-results button[data-library]') !== null");
+    await run("document.querySelector('#arduino-library-results button[data-library]').click()");
+    await wait("document.getElementById('arduino-library-manager-status').textContent.includes('Library installed')");
+    assert.deepStrictEqual(await run("calls.find(item=>item.endpoint==='/libraries/install').body"),{name:'Servo',version:'1.3.0'});
+    assert.strictEqual(await run("document.getElementById('arduino-upload').disabled"),true,'package changes invalidate previous build');
+    await run("document.querySelector('#arduino-library-results button[data-headers]').click()");
+    await wait("az.getBlocksByType('arduino_include',false).length===1");
+    await wait("document.getElementById('arduino-code').value.includes('#include <Servo.h>')");
+    assert.strictEqual(await run("document.getElementById('arduino-library-manager').open"),false);
+    assert.strictEqual(await run("ws.getBlocksByType('arduino_include',false).length"),0);
+    await run("document.getElementById('arduino-manage-libraries').click()");
+    await wait("document.querySelector('#arduino-library-results button[data-headers]') !== null");
+    await run("document.querySelector('#arduino-library-results button[data-headers]').click()");
+    assert.strictEqual(await run("az.getBlocksByType('arduino_include',false).length"),1,'include action avoids duplicates');
+    await run("document.getElementById('arduino-undo').click()");await wait('az.getTopBlocks(false).length===2');
     await run("document.getElementById('arduino-save-blocks').click()");
     await wait("document.getElementById('arduino-build-status').textContent==='Arduino blocks saved.'");
     assert.strictEqual(JSON.parse(fs.readFileSync(savedFile,'utf8')).format,'studiox-arduino');

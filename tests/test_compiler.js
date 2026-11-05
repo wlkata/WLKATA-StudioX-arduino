@@ -116,3 +116,26 @@ valid(snapshot(block('variables_set',{VAR:{id:'counter'}},{VALUE:block('arduino_
 valid(snapshot(block('arduino_digital_write_value',{}, {PIN:pin('13'),STATE:block('arduino_high_low',{LEVEL:'LOW'})})));
 for (const invalid of ['256','-1','A99','13;evil()','GP15']) assert.ok(compile(snapshot(block('arduino_no_tone',{}, {PIN:pin(invalid)}))).diagnostics.some(item=>/pin number/.test(item.message)));
 console.log('GPIO compiler passed: named pins, analog aliases, conditional digital output, state values, PWM, tone, and input validation.');
+
+
+const libraryProgram = snapshot(
+  block('arduino_include',{HEADER:'Servo.h'}),
+  block('arduino_include',{HEADER:'Servo.h'}),
+  block('arduino_cpp_declaration',{CODE:'Servo myServo;'}),
+  block('arduino_setup',{}, {DO:block('arduino_cpp_statement',{CODE:'myServo.attach(9);'})}),
+  block('arduino_loop',{}, {DO:block('arduino_cpp_statement',{CODE:'myServo.write(90);'}, {},
+    block('text_print',{}, {TEXT:block('arduino_cpp_expression',{CODE:'myServo.read()',RETURN_TYPE:'number'})}))}),
+);
+const libraryCode=valid(libraryProgram).code;
+assert.strictEqual((libraryCode.match(/#include <Servo.h>/g)||[]).length,1);
+assert.ok(libraryCode.indexOf('#include <Servo.h>')<libraryCode.indexOf('Servo myServo;'));
+assert.ok(libraryCode.indexOf('Servo myServo;')<libraryCode.indexOf('void setup()'));
+assert.match(libraryCode,/myServo.attach\(9\);/);assert.match(libraryCode,/myServo.read\(\)/);
+for(const header of ['../escape.h','bad>\n#include <evil','https://host/file.h','/absolute.h','sub/../evil.h']) {
+ assert.ok(compile(snapshot(block('arduino_include',{HEADER:header}))).diagnostics.some(item=>/header name/.test(item.message)));
+}
+assert.ok(compile(snapshot(block('arduino_setup',{}, {DO:block('arduino_include',{HEADER:'Servo.h'})}))).diagnostics.some(item=>/top level/.test(item.message)));
+assert.ok(compile(snapshot(block('arduino_setup',{}, {DO:block('arduino_cpp_declaration',{CODE:'int x;'})}))).diagnostics.some(item=>/top level/.test(item.message)));
+assert.ok(compile(snapshot(block('arduino_cpp_statement',{CODE:''}))).diagnostics.some(item=>/Enter C\+\+/.test(item.message)));
+valid(snapshot(block('arduino_digital_write_value',{}, {PIN:pin('13'),STATE:block('arduino_cpp_expression',{CODE:'true',RETURN_TYPE:'boolean'})})));
+console.log('Library code generation passed: deduplicated includes, global declarations, native statements/typed expressions, placement, and invalid headers.');

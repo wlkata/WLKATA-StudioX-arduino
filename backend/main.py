@@ -89,3 +89,25 @@ def refresh_boards():
 def install_board_package():
     data = request.get_json(silent=True) or {}
     return result(lambda: _manager.install_platform(data.get('platform'), data.get('version', '')))
+
+
+@blueprint.get('/libraries')
+def libraries():
+    return result(_manager.libraries)
+
+
+@blueprint.post('/libraries/search')
+def search_libraries():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.search_libraries(data.get('query', '')))
+
+
+@blueprint.post('/libraries/install')
+def install_library():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.install_library(data.get('name'), data.get('version', '')))
+
+
+@blueprint.post('/libraries/refresh')
+def refresh_library_index():
+    return result(_manager.refresh_library_index)

@@ -5,7 +5,7 @@ const before=JSON.stringify(original);
 const toolbox=build(original);
 assert.strictEqual(JSON.stringify(original),before);
 const arduino=toolbox.contents.find(item=>item.name==='Arduino');
-assert.deepStrictEqual(arduino.contents.map(item=>item.name),['Program','I/O','Timing','Serial']);
+assert.deepStrictEqual(arduino.contents.map(item=>item.name),['Program','I/O','Libraries / C++','Timing','Serial']);
 const io=arduino.contents.find(item=>item.name==='I/O');
 assert.ok(io.contents.find(item=>item.type==='arduino_digital_write_value').inputs.STATE.shadow);
 assert.strictEqual(io.contents.find(item=>item.type==='arduino_analog_read').inputs.PIN.shadow.fields.PIN,'A0');
