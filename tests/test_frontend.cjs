@@ -95,7 +95,9 @@ app.whenReady().then(async () => {
     assert.strictEqual(await run('az===ws'),false);
     assert.strictEqual(await run('az.getAllBlocks(false).length'),0,'Arduino starts empty instead of mirroring main');
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
-    assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),5);
+    assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),4);
+    assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
+    assert.strictEqual(await run("ws.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),true);
     await run("document.getElementById('arduino-import-main').click()");
     await wait("!document.getElementById('arduino-compile').disabled");
     assert.strictEqual(await run('az.getTopBlocks(false).length'),2);

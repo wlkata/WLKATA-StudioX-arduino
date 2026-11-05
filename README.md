@@ -5,7 +5,11 @@ C++ and uploading it to an external Arduino board. The Arduino sidebar tab has
 a block canvas, board and serial-port selectors, Compile/Upload controls, and
 code and operation-log panels.
 
-All installed block categories stay visible in the Arduino toolbox. Active blocks
+General Blockly, robot, and extension categories remain available. Python and
+Python-module categories are hidden from the Arduino toolbox because their
+blocks generate Python rather than Arduino C++. Their definitions remain loaded
+so copied/imported Python blocks are preserved and reported as unsupported.
+The main Blockly toolbox is unchanged. Active blocks
 that are not supported by the Arduino target receive a warning and red outline;
 the Arduino tab lists each problem and selects its block in the Arduino canvas. Compile and
 Upload stay unavailable until the workspace is supported. Turning off visual

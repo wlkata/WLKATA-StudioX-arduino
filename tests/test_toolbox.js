@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { build } = require('../frontend/toolbox');
-const original={kind:'categoryToolbox',contents:[{kind:'category',name:'Logic',contents:[]},{kind:'category',name:'Python',contents:[]},{kind:'category',name:'Arduino',contents:[]}]};
+const original={kind:'categoryToolbox',contents:[{kind:'category',name:'Logic',contents:[]},{kind:'category',name:'Python',contents:[{kind:'block',type:'raw'}]},{kind:'category',name:'json',contents:[{kind:'block',type:'library_function_call'}]},{kind:'category',name:'Arduino',contents:[]}]};
 const before=JSON.stringify(original);
 const toolbox=build(original);
 assert.strictEqual(JSON.stringify(original),before);
@@ -10,3 +10,7 @@ const io=arduino.contents.find(item=>item.name==='I/O');
 assert.ok(io.contents.find(item=>item.type==='arduino_digital_write_value').inputs.STATE.shadow);
 assert.strictEqual(io.contents.find(item=>item.type==='arduino_analog_read').inputs.PIN.shadow.fields.PIN,'A0');
 console.log('Arduino toolbox passed: independent category structure and editable I/O defaults.');
+
+assert.ok(!toolbox.contents.some(item=>['Python','json'].includes(item.name)));
+assert.ok(original.contents.some(item=>item.name==='Python'));
+console.log('Python toolbox filtering passed: hidden only in Arduino; source configuration remains unchanged.');

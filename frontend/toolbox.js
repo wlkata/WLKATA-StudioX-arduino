@@ -6,7 +6,20 @@
     const pin = value => ({ shadow: { type: 'arduino_pin', fields: { PIN: value } } });
     const block = (type, inputs = {}, fields = {}) => ({ kind: 'block', type, inputs, fields });
     const group = (name, contents) => ({ kind: 'category', name, colour: '#00979D', contents });
-    toolbox.contents = (toolbox.contents || []).filter(item => item.name !== 'Arduino');
+    const pythonBlocks = new Set(['import_module', 'raw', 'python_with', 'function_call',
+      'instance_function_call', 'library_function_call', 'library_constant']);
+    function filter(items) {
+      return (items || []).flatMap(item => {
+        if (item.name === 'Python' || pythonBlocks.has(item.type)) return [];
+        if (item.contents) {
+          const contents = filter(item.contents);
+          if (item.contents.length && !contents.length && !item.custom) return [];
+          return [{ ...item, contents }];
+        }
+        return [item];
+      });
+    }
+    toolbox.contents = filter(toolbox.contents).filter(item => item.name !== 'Arduino');
     toolbox.contents.push(group('Arduino', [
       group('Program', [block('arduino_setup'), block('arduino_loop')]),
       group('I/O', [
