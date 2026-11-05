@@ -52,9 +52,11 @@ app.whenReady().then(async () => {
       ExtensionAPI.fetch=async(name,endpoint,options)=>{
         const body=options&&options.body?JSON.parse(options.body):null;calls.push({endpoint,body});
         if(endpoint==='/status')return {success:true,available:cliAvailable,cliPath:'/test/arduino-cli',version:{VersionString:'test'},error:'Install Arduino CLI'};
+        if(endpoint==='/boards/sources')return {success:true,urls:[]};
+        if(endpoint==='/boards/search')return {success:true,total:1,platforms:[{id:'arduino:mbed_rp2040',name:'Pico boards',version:'4.3.1',installedVersion:'',boards:['Raspberry Pi Pico']}]};
         if(endpoint==='/boards')return {success:true,boards:[{name:'Uno',fqbn:'arduino:avr:uno'},{name:'Mega',fqbn:'arduino:avr:mega:cpu=atmega2560'}]};
         if(endpoint==='/ports')return {success:true,ports:[{address:'COM9',label:'Test Arduino'}]};
-        if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'){
+        if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'||endpoint==='/boards/install'||endpoint==='/boards/refresh'){
           const id='job'+(++jobCounter);jobs[id]={id,success:true,ok:true,done:endpoint!=='/compile'||!holdCompile,log:['ok']};
           return {success:true,jobId:id};
         }
@@ -155,6 +157,16 @@ app.whenReady().then(async () => {
     await wait("!unsupported.getSvgRoot().classList.contains('arduino-unsupported')");
     assert.strictEqual(await run("document.getElementById('arduino-compile').disabled"),true);
     await run('unsupported.dispose()');await wait("!document.getElementById('arduino-compile').disabled");
+    await run("document.getElementById('arduino-manage-boards').click()");
+    await wait("document.querySelector('#arduino-board-results button[data-platform]') !== null");
+    assert.strictEqual(await run("document.getElementById('arduino-board-manager').open"),true);
+    assert.match(await run("document.getElementById('arduino-board-results').textContent"),/Raspberry Pi Pico.*Install/s);
+    await run("document.querySelector('#arduino-board-results button').click()");
+    await wait("document.getElementById('arduino-board-manager-status').textContent.includes('Board support installed')");
+    assert.deepStrictEqual(await run("calls.find(item=>item.endpoint==='/boards/install').body"),{platform:'arduino:mbed_rp2040',version:'4.3.1'});
+    await run("document.getElementById('arduino-board-pico-source').click()");
+    assert.match(await run("document.getElementById('arduino-board-sources').value"),/package_rp2040_index.json/);
+    await run("document.getElementById('arduino-board-manager-close').click()");
     await run("document.getElementById('arduino-save-blocks').click()");
     await wait("document.getElementById('arduino-build-status').textContent==='Arduino blocks saved.'");
     assert.strictEqual(JSON.parse(fs.readFileSync(savedFile,'utf8')).format,'studiox-arduino');

@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import threading
 import uuid
+from urllib.parse import urlparse
 from toolchain import installed_cli
 
 FQBN = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_=,.-]+)?$')
@@ -118,6 +119,53 @@ class ArduinoManager:
                 known[fqbn] = {'name': item.get('name') or fqbn, 'fqbn': fqbn}
         return {'success': True, 'boards': list(known.values())}
 
+    def search_boards(self, query=''):
+        if not isinstance(query, str) or len(query) > 200 or query.startswith('-'):
+            raise ValueError('Enter a board name of at most 200 characters.')
+        data = self._json(['core', 'search'] + ([query.strip()] if query.strip() else []))
+        platforms = []
+        for item in data.get('platforms') or []:
+            latest = item.get('latest_version', '')
+            release = (item.get('releases') or {}).get(latest) or {}
+            platforms.append({'id': item['id'], 'name': release.get('name') or item['id'],
+                              'version': latest, 'installedVersion': item.get('installed_version') or '',
+                              'boards': [board['name'] for board in release.get('boards', [])],
+                              'deprecated': bool(release.get('deprecated'))})
+        return {'success': True, 'platforms': platforms[:200], 'total': len(platforms)}
+
+    def board_sources(self, urls=None):
+        with self._lock:
+            config = Path(self._config())
+            data = json.loads(config.read_text(encoding='utf-8'))
+            if urls is not None:
+                if self._active:
+                    raise RuntimeError('Wait for the active operation before changing board sources.')
+                if not isinstance(urls, list) or len(urls) > 20:
+                    raise ValueError('Provide at most 20 board package URLs.')
+                for url in urls:
+                    parsed = urlparse(url) if isinstance(url, str) else None
+                    if not parsed or len(url) > 2048 or parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+                        raise ValueError('Board package URLs must be HTTPS URLs without credentials or fragments.')
+                data.setdefault('board_manager', {})['additional_urls'] = list(dict.fromkeys(urls))
+                temporary = config.with_suffix('.tmp')
+                temporary.write_text(json.dumps(data), encoding='utf-8')
+                os.replace(temporary, config)
+            return {'success': True, 'urls': data.get('board_manager', {}).get('additional_urls') or []}
+
+    def refresh_board_index(self):
+        return self._new_job('board-index', None, lambda job: self._run(job, ['core', 'update-index']))
+
+    def install_platform(self, platform, version=''):
+        if not isinstance(platform, str) or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*', platform):
+            raise ValueError('Choose a valid board package.')
+        if not isinstance(version, str) or len(version) > 80 or version and not re.fullmatch(r'[0-9][A-Za-z0-9_.+-]*', version):
+            raise ValueError('Choose a valid board package version.')
+        target = platform + ('@' + version if version else '')
+        def install(job):
+            self._run(job, ['core', 'update-index'])
+            self._run(job, ['core', 'install', target])
+        return self._new_job('core', None, install)
+
     def ports(self):
         data = self._json(['board', 'list'])
         ports = []
@@ -187,7 +235,8 @@ class ArduinoManager:
                 job['process'] = None
 
     def _new_job(self, kind, board, work, keep=()):
-        validate_board(board)
+        if board is not None:
+            validate_board(board)
         # Resolve before accepting a job, so missing tooling is an immediate error.
         self.cli()
         with self._lock:
@@ -261,11 +310,7 @@ class ArduinoManager:
 
     def install_core(self, board):
         validate_board(board)
-        platform = ':'.join(board.split(':')[:2])
-        def install(job):
-            self._run(job, ['core', 'update-index'])
-            self._run(job, ['core', 'install', platform])
-        return self._new_job('core', board, install)
+        return self.install_platform(':'.join(board.split(':')[:2]))
 
     def job(self, identifier):
         with self._lock:

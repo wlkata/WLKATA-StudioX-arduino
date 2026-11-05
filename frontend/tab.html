@@ -20,6 +20,7 @@
         <button type="button" id="arduino-clear-blocks">Clear Arduino workspace</button>
         <hr>
         <button type="button" id="arduino-refresh-devices">Refresh boards and ports</button>
+        <button type="button" id="arduino-manage-boards">Boards manager…</button>
         <button type="button" id="arduino-install-core">Install board support</button>
         <button type="button" id="arduino-settings-toggle">Arduino CLI settings</button>
       </div></details>
@@ -44,4 +45,12 @@
       <section class="arduino-log-panel" id="arduino-log-panel" role="tabpanel" aria-labelledby="arduino-log-tab" hidden><div class="arduino-section-heading"><strong>Operation log</strong></div><pre id="arduino-log" tabindex="0" aria-label="Compilation and upload log">No operation has run yet.</pre></section>
     </aside>
   </div>
+  <dialog id="arduino-board-manager" class="arduino-manager">
+    <div class="arduino-section-heading"><h3>Boards manager</h3><button type="button" class="arduino-button arduino-quiet" id="arduino-board-manager-close">Close</button></div>
+    <p>Find and install board support, including boards you have not connected or installed.</p>
+    <form id="arduino-board-search-form" class="arduino-manager-search"><input id="arduino-board-query" placeholder="Search boards, e.g. Raspberry Pi Pico" aria-label="Search boards"><button class="arduino-button" type="submit">Search</button><button type="button" class="arduino-button" id="arduino-board-refresh">Refresh index</button></form>
+    <details><summary>Additional board package URLs</summary><p>Add manufacturer package indexes when a board is not in the default catalog.</p><textarea id="arduino-board-sources" rows="3" aria-label="Additional board package URLs" placeholder="One HTTPS URL per line"></textarea><div class="arduino-manager-search"><button type="button" class="arduino-button" id="arduino-board-pico-source">Add Arduino-Pico source</button><button type="button" class="arduino-button" id="arduino-board-save-sources">Save and refresh</button></div></details>
+    <p id="arduino-board-manager-status" role="status"></p><div id="arduino-board-results" class="arduino-manager-results"></div>
+    <pre id="arduino-board-manager-log" class="arduino-manager-log" hidden></pre><button type="button" class="arduino-button" id="arduino-board-manager-cancel" hidden>Cancel operation</button>
+  </dialog>
 </div>

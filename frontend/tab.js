@@ -30,7 +30,7 @@
     get('install-core').disabled = busy || !available;
     get('cancel').hidden = !busy;
     get('cancel').disabled = !operation;
-    ['board', 'port', 'manual-port', 'save-cli', 'refresh-devices'].forEach(id => { get(id).disabled = busy; });
+    ['board', 'port', 'manual-port', 'save-cli', 'refresh-devices', 'manage-boards'].forEach(id => { get(id).disabled = busy; });
     get('undo').disabled = !editor || !editor.workspace.getUndoStack().length;
     get('redo').disabled = !editor || !editor.workspace.getRedoStack().length;
     get('copy-blocks').disabled = !editor || !editor.selected();
@@ -118,7 +118,7 @@
     } catch (error) { available = false; get('tooling-status').textContent = error.message; }
     finally { buttons(); }
   }
-  async function watchJob(identifier) {
+  async function watchJob(identifier, onProgress) {
     operation = identifier;
     buttons();
     let failures = 0;
@@ -127,6 +127,7 @@
         const job = await request('/jobs/' + identifier);
         failures = 0;
         get('log').textContent = job.log.join('\n');
+        if (onProgress) onProgress(job);
         get('log').scrollTop = get('log').scrollHeight;
         if (job.done) {
           if (!job.ok) throw new Error(job.error || 'Operation failed.');
@@ -180,6 +181,17 @@
       if (kind === 'core') refresh();
     }
   }
+  async function runToolJob(path, body, onProgress) {
+    if (busy) throw new Error('Another Arduino operation is running.');
+    busy = true; compiled = null; showOutput('log'); buttons();
+    try {
+      const started = await request(path, body);
+      return await watchJob(started.jobId, onProgress);
+    } finally { busy = false; operation = null; buttons(); await refresh(); }
+  }
+  async function cancelOperation() {
+    if (operation) await request('/jobs/' + operation + '/cancel', {});
+  }
   function showOutput(tab) {
     get('code-panel').hidden = tab !== 'code';
     get('log-panel').hidden = tab !== 'log';
@@ -197,8 +209,8 @@
     if (!api || !api.getWorkspaceSnapshot || !api.getWorkspaceToolbox || !api.appendWorkspaceSnapshot || !api.pasteBlockClipboard) {
       message('This extension needs a StudioX version with independent-workspace transfer APIs.'); return;
     }
-    for (const asset of ['compiler', 'editor']) {
-      const name = asset === 'compiler' ? 'StudioXArduinoCompiler' : 'StudioXArduinoEditor';
+    for (const asset of ['compiler', 'editor', 'managers']) {
+      const name = { compiler: 'StudioXArduinoCompiler', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
       if (window[name]) continue;
       await new Promise((resolve, reject) => {
         const script = document.createElement('script'); script.src = new URL(asset + '.js', assetBase).href;
@@ -258,6 +270,8 @@
     get('compile').addEventListener('click', () => perform('compile'));
     get('upload').addEventListener('click', () => perform('upload'));
     menuAction('install-core', () => perform('core'));
+    const managers = window.StudioXArduinoManagers.create({ get, request, runToolJob, cancelOperation });
+    menuAction('manage-boards', () => managers.openBoards());
     get('cancel').addEventListener('click', async () => {
       if (!operation) return;
       try { await request('/jobs/' + operation + '/cancel', {}); message('Cancelling operation…'); }

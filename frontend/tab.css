@@ -58,3 +58,17 @@
 #arduino-code { resize: none; }
 .arduino-app [hidden] { display: none !important; }
 @media (max-width: 950px) { .arduino-main { grid-template-columns: 1fr; grid-template-rows: minmax(400px, 1fr) 300px; }.arduino-app { min-height: 950px; } }
+
+.arduino-manager { width: min(720px, calc(100vw - 64px)); max-height: calc(100vh - 64px); box-sizing: border-box; overflow: auto; border: 1px solid var(--border-primary); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); padding: 16px; font-size: 12px; }
+.arduino-manager::backdrop { background: #0007; }
+.arduino-manager .arduino-section-heading { padding: 0; background: transparent; }
+.arduino-manager h3 { margin: 0; font-size: 16px; }
+.arduino-manager p { color: var(--text-secondary); }
+.arduino-manager-search { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.arduino-manager-search input { flex: 1; min-width: 160px; }
+.arduino-manager textarea { box-sizing: border-box; width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-primary); padding: 8px; }
+.arduino-manager-results { display: flex; flex-direction: column; gap: 8px; max-height: 45vh; overflow: auto; }
+.arduino-manager-card { border: 1px solid var(--border-primary); border-radius: 5px; padding: 10px; }
+.arduino-manager-card h4 { margin: 0 0 6px; font-size: 13px; }
+.arduino-manager-card p { margin: 6px 0; }
+.arduino-manager-log { max-height: 150px; overflow: auto; white-space: pre-wrap; user-select: text; background: var(--bg-secondary); padding: 8px; font-size: 11px; }

@@ -66,6 +66,23 @@ connection holding that Arduino port, then retry. Uploading a sketch does not
 require burning a new bootloader. An uploaded sketch runs independently of
 StudioX; the app's Python Run/Stop controls do not stop the Arduino program.
 
+## Boards manager
+
+Open More → Boards manager to search board packages that are not installed.
+Results show supported board names, latest versions, and installed versions.
+Use Refresh index on first use or when looking for new releases, then Install or
+Update a package. Newly installed boards appear in the toolbar board selector.
+Downloading indexes and packages needs internet; installed boards remain usable
+offline. Package operations share the compile/upload lock and can be cancelled.
+
+For additional manufacturers, open Additional board package URLs, enter one
+HTTPS index URL per line, and select Save and refresh. Add Arduino-Pico source
+fills the index documented by the Arduino-Pico project; save it to enable that
+catalog. The standard Arduino catalog also contains Pico support. Finding or
+installing a package does not connect to hardware. Pico first-upload/BOOTSEL and
+USB permissions still depend on the selected core; physical Pico upload has not
+been tested by this extension.
+
 ## Independent workspace
 
 The Arduino canvas starts empty and is separate from the main Blockly canvas.
