@@ -5,11 +5,12 @@ C++ and uploading it to an external Arduino board. The Arduino sidebar tab has
 a block canvas, board and serial-port selectors, Compile/Upload controls, and
 code and operation-log panels.
 
-General Blockly, robot, and extension categories remain available. Python and
+General Blockly, robot, and extension categories remain available. Python, Workflows, and
 Python-module categories are hidden from the Arduino toolbox because their
 blocks generate Python rather than Arduino C++. Their definitions remain loaded
 so copied/imported Python blocks are preserved and reported as unsupported.
-The main Blockly toolbox is unchanged. Active blocks
+Arduino has no category in the main Python toolbox; its definitions remain
+loaded for saved workspaces and explicit transfers. Active blocks
 that are not supported by the Arduino target receive a warning and red outline;
 the Arduino tab lists each problem and selects its block in the Arduino canvas. Compile and
 Upload stay unavailable until the workspace is supported. Turning off visual
@@ -17,12 +18,11 @@ highlights does not bypass validation. Disabled blocks are omitted.
 
 This version does not implement robot commands, Python blocks, lists, Blockly
 functions, workflows, or other extensions' blocks. Arduino C++ includes and
-native C++ blocks are available for using libraries. These can be added later
-without replacing the editor.
+native C++ blocks and generated library function blocks are available.
 
 ## Install
 
-1. Use a StudioX build with the workspace frontend APIs documented in
+1. Use a StudioX build with extension host API version 2 and the workspace frontend APIs documented in
    `docs/extensions/api-v1.md` in the app repository. Older builds show an upgrade
    message in the Arduino tab.
 2. In Settings → Extensions → Installed → Install locally → From folder,
@@ -90,10 +90,13 @@ been tested by this extension.
 
 ## Independent workspace
 
-The Arduino canvas starts empty and is separate from the main Blockly canvas.
+The Arduino canvas always contains protected Setup (run once) and Loop (repeat
+forever) blocks. They cannot be deleted or duplicated. This editor is separate
+from the main Blockly canvas.
 Use Import from Blockly to append a snapshot of the current main workspace.
 Later edits on either side do not change the other side. Repeated imports append
-another copy; use Undo to remove an import.
+another copy of the instructions inside the existing Setup/Loop blocks; use
+Undo to remove an import. Ordinary pasted statement stacks append to Setup.
 
 Copy and Paste work between the main Blockly and Arduino editors, including
 main-editor multi-selections. Pasted blocks receive new ids and variables are
@@ -103,7 +106,8 @@ Arduino has its own Undo/Redo, selection, warnings, and generated code. Unsuppor
 blocks are highlighted only in Arduino. Its workspace saves locally after edits
 and restores when StudioX starts again. More → Save blocks exports a JSON file;
 More → Import blocks appends JSON, XML, or legacy `.blockly` files. Clear Arduino
-workspace affects only this editor. If recovery needs a missing block definition,
+workspace removes instructions while keeping Setup and Loop, and can be undone.
+It affects only this editor. If recovery needs a missing block definition,
 the original saved data is preserved until the user explicitly clears it.
 
 ## Basic blocks
@@ -114,22 +118,21 @@ the original saved data is preserved until the user explicitly clears it.
 | Logic | Booleans, comparisons, AND/OR, NOT, ternary expression |
 | Loops | Repeat, while/until, numeric for loop, break/continue inside an actual loop |
 | Math | Numbers, arithmetic/power, modulo, square root, absolute/negative, logarithms/exponentials, rounding, finite built-in constants |
-| Variables | Get, set, numeric change; one inferred number, boolean, or text type per variable |
+| Variables | Get, set, numeric change; one inferred number, boolean, text, or library class type per variable |
 | Text | Literals, join, append, length, empty check, print to Serial |
 
-Use one Setup (run once) block for `setup()` and one Loop (repeat forever) block
-for `loop()`. Find them under Arduino → Program, or click Setup / Loop in the
-toolbar to insert whichever entries are missing. That action is undoable and
-does not duplicate existing entries. Additional top-level statement stacks run once in `setup()`
-in their workspace position order. Standalone value blocks must be connected
-before compiling. Break/continue must be inside a Blockly loop, not directly
-inside the Arduino repeat forever entry block.
+Setup generates `setup()` and runs once; Loop generates `loop()` and repeats.
+Both are present from the start, so there is no Program toolbox category or
+manual insert action. Their bodies, positions, and undo history remain editable.
+Standalone value blocks must be connected before compiling. Break/continue must
+be inside a Blockly loop, not directly inside the Arduino Loop entry block.
 
-Variables are initialized to 0, false, or empty text, and keep one inferred type.
+Variables are initialized to 0, false, or empty text, and keep one inferred type. Library object variables receive their class type
+from an explicit class declaration connected to the standard set variable block.
 Numbers use Arduino `double` (on classic AVR boards this has float precision),
 booleans use `bool`, and text uses Arduino `String`. Python's arbitrary-size
 integers and dynamic type changes are not emulated. Text is encoded as UTF-8.
-The Arduino toolbox groups Program, I/O, Timing, and Serial blocks. I/O blocks
+The Arduino toolbox groups I/O, Libraries / C++, Timing, and Serial blocks. I/O blocks
 include named pins (`13`, `A0`), digital HIGH/LOW values, condition-driven digital
 writes, and buzzer tone/stop-tone controls, alongside pin mode, digital reads and
 writes, analog reads, and PWM. Value inputs have editable defaults. Pin labels,
@@ -155,42 +158,104 @@ metadata. Library installation shares the operation lock with board installation
 compilation, and upload; a package change invalidates the previous Upload result.
 Libraries and caches stay in `.data/toolchain`, separate from Arduino IDE.
 
+For a downloaded or custom library, use Install locally → From folder or From ZIP.
+Select the actual library folder, or a ZIP containing one library. Modern
+`library.properties`/`src` layouts and legacy header-based libraries are accepted.
+GitHub ZIP wrapper folders are supported. The source is copied into a temporary
+snapshot, installed into the extension's sketchbook through Arduino CLI, and left
+unchanged. Temporary files are removed after success, failure, or cancellation.
+Local installation does not permanently enable ZIP/Git installs in CLI settings.
+Install any additional dependencies separately if they are not already present.
+
 Choose Add include on an installed library to insert its advertised header(s) as
 blocks. The manual header field also supports built-in headers such as `Wire.h`.
 Existing include blocks are reused rather than duplicated. An include block
 emits `#include <Header.h>` before global declarations; it does not download a
 library itself. Include blocks are portable with saved/copied workspaces.
 
-Arduino → Libraries / C++ contains:
+Arduino → Libraries / C++ groups installed libraries by library name and then
+header file. Each header contains a class dropdown for declarations, a function
+dropdown for free/static functions, a variable-method block, and a constant
+dropdown when applicable. Selecting a function or overload updates its parameter
+inputs. Void calls are statements; returned values connect to value inputs.
+A returning function can also be changed to a statement through its context menu.
+Installing a library or changing the board refreshes the browser, including
+libraries supplied by the board core. Manage libraries is in the same group.
+
+For Servo, open Servo → Servo.h, use Variables → set to create a variable, and
+connect the class Servo() value. This declares `Servo v_servo;` before Setup.
+The Variables category also has a type value for primitive declarations, such as
+set pin to type int, which produces `int v_pin = 0;`. Set boolean and text variables
+to type bool and String. Later ordinary set blocks assign values to these variables.
+
+Use Variables → call variable method, select the declared servo variable, then
+choose attach for Setup or write for Loop. The menu contains that variable's
+class methods. Parameter inputs follow the selected method/overload. Renaming
+the variable updates declarations, getters, setters, and calls. A method-call
+block is also available in each header's flyout. Predeclared objects such as Wire
+can be selected without another declaration. Required primitive arguments have
+editable defaults; optional parameters can be expanded. Matching arguments
+survive overload changes, and Undo restores removed values.
+
+Types and class values are declaration markers, not runtime function results.
+Declare each variable once, at the top level or directly in Setup. Declarations
+are global so both Setup and Loop can use them; constructors run before Setup.
+Class arguments must be constant values or explicit C++ expressions available
+at that point. Runtime inputs such as millis or variable reads are rejected for
+global construction. Use methods such as begin/attach in Setup for runtime
+initialization. Declarations inside branches or Loop are rejected.
+
+Generated objects are ordinary C++ values. There is no ownership wrapper, hidden
+allocation, or reference counting. Normal class assignment follows the class's
+C++ assignment operator; it does not create a Python-style shared reference.
+Declare another class variable explicitly before assigning to it. The compiler
+reports assignment errors for classes that prohibit copying. Existing saved
+constructor-call values connected to set variable are treated as declarations.
+Menus, signatures, methods, and arguments survive JSON, XML, clipboard, and
+recovery, including restoration when the library catalog is offline.
+
+Advanced C++ contains these escape hatches:
 
 - Include library header — top-level `#include`, without quotes or angle brackets.
-- C++ declaration — top-level instances/globals such as `Servo myServo;`.
-- C++ statement — code inside Setup or Loop, such as `myServo.attach(9);` or
-  `myServo.write(90);`.
-- C++ value — an expression such as `myServo.read()`, with a declared number,
-  boolean, or text result so it can connect to other blocks.
+- Global C++ definition — creates an object or global value before Setup, for
+  example `Servo servo;` or `int count = 0;`.
+- Run C++ code — performs an action inside Setup or Loop, for example
+  `servo.write(90);`.
+- C++ value — an expression with a number, boolean, text, or generic C++ result.
 
-For a servo: install Servo, add its `Servo.h` include, declare `Servo myServo;`,
-attach it in Setup, and call it from Loop. These are native Arduino C++ APIs;
-Python imports and Python library-call blocks cannot be used here. Installing a
-library does not automatically create Blockly wrappers for all its functions.
-The selected board and installed library must support those APIs. C++ syntax and
-API errors are reported by the Arduino compiler in the operation log. No library
-code runs on the computer merely because an include block is added.
+Header parsing is syntactic, not a full C++ compiler. Templates, variadic calls,
+operators, and deleted functions are disabled with an explanation. Complex
+pointer/reference/object parameters require an explicit C++ value or ordinary
+object variable. Inherited methods and APIs generated by macros may need
+Advanced C++.
+Architecture and preprocessor conditions appear in tooltips; the selected board's
+compiler determines whether an API is available. Raw C++ syntax and API errors
+appear in the operation log. No header code executes on the computer during
+inspection. Python imports and workflows remain unsupported in this editor.
 
 ## Compile and upload
 
-Compile creates an immutable sketch and build directory. Upload references that
-successful compile id and its original board, not arbitrary files or a different
-board. Arduino workspace edits and board changes invalidate the Upload button. Edits
-made while compilation is running require a new compilation. Upload never
-silently recompiles an older snapshot. Only one compile, upload, or core install
-runs at a time; Cancel terminates its CLI process tree. Failed jobs retain logs.
-No upload or hardware connection runs when the extension or tab starts.
+Upload is available for a valid workspace once a serial port is selected. It
+compiles first when needed, then uploads the resulting immutable build. A
+successful build is reused when generated C++ and the selected board are the
+same. Moving blocks or making other edits that leave generated code unchanged
+preserves that build. Compile remains available to explicitly rebuild.
+
+Board/library installation (including local libraries), CLI settings changes,
+and a different generated program require a new build. Refreshing indexes alone
+does not invalidate it. If code changes or becomes invalid during automatic
+compilation, upload stops before flashing; click Upload again for the latest
+program. Compilation failure or cancellation never proceeds to upload. Upload
+always references a successful compile id bound to its original board and build
+files. Only one compile, upload, or package operation runs at a time; Cancel
+terminates its CLI process tree. Failed jobs retain logs. Nothing is uploaded or
+connected when the extension or tab starts.
 
 The extension backend uses Arduino CLI argument arrays without a shell.
-No `requirements.txt` is needed: StudioX provides Flask and flask-cors when
-preparing backend/setup environments. `contributes.setup.python` points to
+`requirements.txt` installs the Tree-sitter C++ header parser. StudioX supplies
+Flask and flask-cors when preparing backend/setup environments. When updating
+an existing installation, use Re-setup in Settings → Extensions and restart
+StudioX to install the parser and reload the new block serializers. `contributes.setup.python` points to
 `backend/setup.py`, whose `on_setup(ctx)` installs CLI without loading the backend.
 Board support is installed separately for the selected board.
 
@@ -217,12 +282,20 @@ After the initial code is pushed, this repository can be added to the StudioX
 
 ```sh
 node tests/test_compiler.js
+node tests/test_toolbox.js
+node tests/test_scaffold.js
+node tests/test_dropdowns.js --studiox-root ../blockly
+node tests/test_declarations.js --studiox-root ../blockly
+node tests/test_object_variables.js
+node tests/test_library_blocks.js --studiox-root ../blockly
 node tests/compile_fixture.js /tmp/StudioXSubset.ino
 python -B -m unittest discover -s tests -p 'test_*.py'
 ```
 
 Use a Python with Flask installed, such as the extension's environment. Backend
-tests execute a fake CLI and do not flash hardware. They cover immutable build
+tests execute a fake CLI and do not flash hardware.
+`test_object_variables.js` uses a local `c++` compiler to check plain class declarations,
+noncopyable classes, and single initialization without hardware. They cover immutable build
 output, board binding, input validation, cancellation, timeout, core installation,
 operation locking, bounded history, and HTTP errors.
 
@@ -232,14 +305,14 @@ From the StudioX repository, run the real Blockly/Electron integration test:
 node_modules/.bin/electron ../WLKATA-StudioX-arduino/tests/test_frontend.cjs --studiox-root "$PWD"
 ```
 
-That test runs two real Blockly workspaces and checks an empty Arduino start,
+That test runs two real Blockly workspaces and checks protected Setup/Loop shells, nested library function flyouts,
 detached imports, no live synchronization, clipboard transfers both ways, local
 undo/redo, diagnostics, keyboard isolation, file import/export, restart recovery,
-and stale-build protection. The operation backend is mocked; it does not open
+dynamic function/constant dropdowns, type/class declarations and variable-based method calls, hidden Arduino categories in Python, and stale-build protection. The operation backend is mocked; it does not open
 a physical board.
 
 For toolchain validation, `compile_fixture.js` produces a sketch exercising every
-supported block kind. Compile it with Arduino CLI after installing a board core.
+supported block kind, including explicit class and primitive declarations. Compile it with Arduino CLI after installing a board core.
 The initial implementation was checked with Arduino CLI 1.5.1 and Arduino AVR
 core 1.8.8. Physical board upload remains a separate hardware test.
 

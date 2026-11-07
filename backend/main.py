@@ -111,3 +111,15 @@ def install_library():
 @blueprint.post('/libraries/refresh')
 def refresh_library_index():
     return result(_manager.refresh_library_index)
+
+
+@blueprint.post('/libraries/install-local')
+def install_local_library():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.install_local_library(data.get('path'), data.get('kind')))
+
+
+@blueprint.post('/libraries/catalog')
+def library_catalog():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.library_catalog(data.get('board', '')))

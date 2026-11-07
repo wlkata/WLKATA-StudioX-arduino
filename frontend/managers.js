@@ -1,6 +1,6 @@
 /* Board and library installation dialogs; device operations use the shared job lock. */
 (function (root) {
-  function create({ get, request, runToolJob, cancelOperation, addIncludes }) {
+  function create({ get, request, runToolJob, cancelOperation, addIncludes, chooseLocalLibrary }) {
     const dialog = get('board-manager');
     const status = text => { get('board-manager-status').textContent = text; };
     let searching = 0, working = false;
@@ -62,7 +62,7 @@
       if (!urls.includes(url)) urls.push(url);
       get('board-sources').value = urls.join('\n'); status('Click Save and refresh to enable the Arduino-Pico catalog.');
     });
-    const libraryUI = createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, element });
+    const libraryUI = createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, chooseLocalLibrary, element });
     return { openLibraries: libraryUI.open, openBoards: async () => {
       if (!dialog.open) dialog.showModal();
       try { const sources = await request('/boards/sources'); get('board-sources').value = sources.urls.join('\n'); }
@@ -70,7 +70,7 @@
       await search(); get('board-query').focus();
     } };
   }
-  function createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, element }) {
+  function createLibraryManager({ get, request, runToolJob, cancelOperation, addIncludes, chooseLocalLibrary, element }) {
     const dialog = get('library-manager');
     const status = text => { get('library-manager-status').textContent = text; };
     let working = false, token = 0, installedOnly = true;
@@ -100,15 +100,17 @@
           card.appendChild(element('p', library.installedVersion ? 'Installed: ' + library.installedVersion : 'Not installed'));
           card.appendChild(element('p', 'Architectures: ' + library.architectures.join(', ')));
           const controls = element('div', '', 'arduino-manager-search');
-          const versions = document.createElement('select'); versions.setAttribute('aria-label', library.name + ' version');
-          [...new Set([library.version, ...(library.versions || []).slice().reverse()])].filter(Boolean).forEach(version => {
-            const option = element('option', version); option.value = version; versions.appendChild(option);
-          });
-          controls.appendChild(versions);
-          const install = element('button', library.installedVersion ? 'Install selected version' : 'Install', 'arduino-button');
-          install.type = 'button'; install.dataset.library = library.name;
-          install.addEventListener('click', () => perform('/libraries/install', { name: library.name, version: versions.value }, 'Library installed. Add its include header to use it in this workspace.'));
-          controls.appendChild(install);
+          if (!local) {
+            const versions = document.createElement('select'); versions.setAttribute('aria-label', library.name + ' version');
+            [...new Set([library.version, ...(library.versions || []).slice().reverse()])].filter(Boolean).forEach(version => {
+              const option = element('option', version); option.value = version; versions.appendChild(option);
+            });
+            controls.appendChild(versions);
+            const install = element('button', library.installedVersion ? 'Install selected version' : 'Install', 'arduino-button');
+            install.type = 'button'; install.dataset.library = library.name;
+            install.addEventListener('click', () => perform('/libraries/install', { name: library.name, version: versions.value }, 'Library installed. Add its include header to use it in this workspace.'));
+            controls.appendChild(install);
+          }
           if (library.headers && library.headers.length) {
             const add = element('button', 'Add include', 'arduino-button'); add.type = 'button';
             add.dataset.headers = library.headers.join(', '); add.title = library.headers.join(', ');
@@ -129,6 +131,21 @@
       } catch (error) { status(error.message); }
       finally { lock(false); }
     }
+    async function installLocal(kind) {
+      if (working) return;
+      lock(true);
+      get('library-manager-cancel').hidden = true;
+      try {
+        const path = await chooseLocalLibrary(kind);
+        lock(false);
+        if (!path) return;
+        installedOnly = true;
+        await perform('/libraries/install-local', { kind, path }, 'Local library installed. Add its include header to use it in this workspace.');
+      } catch (error) { status(error.message); }
+      finally { lock(false); }
+    }
+    get('library-local-folder').addEventListener('click', () => installLocal('folder'));
+    get('library-local-zip').addEventListener('click', () => installLocal('zip'));
     get('library-manager-close').addEventListener('click', () => dialog.close());
     get('library-search-form').addEventListener('submit', event => { event.preventDefault(); if (!working) list(false); });
     get('library-installed').addEventListener('click', () => { if (!working) list(true); });

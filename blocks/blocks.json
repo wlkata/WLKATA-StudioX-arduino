@@ -342,7 +342,7 @@
   },
   {
     "type": "arduino_cpp_declaration",
-    "message0": "C++ declaration %1",
+    "message0": "Global C++ definition %1",
     "args0": [
       {
         "type": "field_input",
@@ -356,7 +356,7 @@
   },
   {
     "type": "arduino_cpp_statement",
-    "message0": "C++ statement %1",
+    "message0": "Run C++ code %1",
     "args0": [
       {
         "type": "field_input",
@@ -394,6 +394,10 @@
           [
             "text",
             "text"
+          ],
+          [
+            "C++ value",
+            "cpp"
           ]
         ]
       }
@@ -402,5 +406,129 @@
     "tooltip": "Native Arduino C++ expression. Choose its return type so Blockly can validate connections.",
     "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
     "output": null
+  },
+  {
+    "type": "arduino_library_call",
+    "message0": "Library API",
+    "colour": "#00979D",
+    "tooltip": "Choose a function from the Arduino library toolbox.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_library_value",
+    "message0": "Library API",
+    "colour": "#00979D",
+    "tooltip": "Choose a function from the Arduino library toolbox.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null
+  },
+  {
+    "type": "arduino_library_object",
+    "message0": "Library API",
+    "colour": "#00979D",
+    "tooltip": "Choose a function from the Arduino library toolbox.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_library_object_ref",
+    "message0": "Library API",
+    "colour": "#00979D",
+    "tooltip": "Choose a function from the Arduino library toolbox.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null
+  },
+  {
+    "type": "arduino_library_constant",
+    "message0": "Library API",
+    "colour": "#00979D",
+    "tooltip": "Choose a function from the Arduino library toolbox.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null
+  },
+  {
+    "colour": "#00979D",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null,
+    "type": "arduino_class",
+    "message0": "class",
+    "tooltip": "A class declaration value. Connect directly to set variable; generates a global C++ instance before Setup."
+  },
+  {
+    "colour": "#00979D",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": null,
+    "type": "arduino_instance_call",
+    "message0": "call variable method",
+    "tooltip": "Select a declared class variable and one of its methods."
+  },
+  {
+    "colour": "#00979D",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": "ArduinoType",
+    "type": "arduino_type",
+    "message0": "type %1",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "TYPE",
+        "options": [
+          [
+            "int",
+            "int"
+          ],
+          [
+            "long",
+            "long"
+          ],
+          [
+            "unsigned int",
+            "unsigned int"
+          ],
+          [
+            "unsigned long",
+            "unsigned long"
+          ],
+          [
+            "float",
+            "float"
+          ],
+          [
+            "double",
+            "double"
+          ],
+          [
+            "bool",
+            "bool"
+          ],
+          [
+            "char",
+            "char"
+          ],
+          [
+            "byte",
+            "byte"
+          ],
+          [
+            "uint8_t",
+            "uint8_t"
+          ],
+          [
+            "uint16_t",
+            "uint16_t"
+          ],
+          [
+            "uint32_t",
+            "uint32_t"
+          ],
+          [
+            "String",
+            "String"
+          ]
+        ]
+      }
+    ],
+    "tooltip": "Connect to set variable to declare its C++ type once. The variable is global and starts at zero, false, or empty text."
   }
 ]

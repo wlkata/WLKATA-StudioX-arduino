@@ -139,3 +139,21 @@ assert.ok(compile(snapshot(block('arduino_setup',{}, {DO:block('arduino_cpp_decl
 assert.ok(compile(snapshot(block('arduino_cpp_statement',{CODE:''}))).diagnostics.some(item=>/Enter C\+\+/.test(item.message)));
 valid(snapshot(block('arduino_digital_write_value',{}, {PIN:pin('13'),STATE:block('arduino_cpp_expression',{CODE:'true',RETURN_TYPE:'boolean'})})));
 console.log('Library code generation passed: deduplicated includes, global declarations, native statements/typed expressions, placement, and invalid headers.');
+
+
+const constructorSignature={header:'Servo.h',library:'Servo',owner:'Servo',qualifiedName:'Servo',name:'Servo',constructor:true,parameters:[],returnKind:'void',supported:true};
+const callSignature={...constructorSignature,constructor:false,name:'write',qualifiedName:'Servo::write',returnType:'void',parameters:[{type:'int',name:'angle',kind:'number'}]};
+function apiBlock(type,spec,fields={},inputs={}){const item=block(type,fields,inputs);item.extraState={signature:spec};return item;}
+const constructorBlock=apiBlock('arduino_library_object',constructorSignature,{VAR:{id:'servo'}});
+const methodBlock=apiBlock('arduino_library_call',callSignature,{VAR:{id:'servo'}},{ARG_0:number(90)});
+const apiState=snapshot(constructorBlock,block('arduino_setup',{}, {DO:methodBlock}));
+apiState.variables.push({id:'servo',name:'arm',type:'arduino-object:Servo'});
+const apiCode=valid(apiState).code;
+assert.match(apiCode,/#include <Servo.h>/);assert.match(apiCode,/Servo obj_arm;/);assert.match(apiCode,/obj_arm.write\(\(int\)\(90\)\);/);
+const missingObject=snapshot(block('arduino_loop',{}, {DO:methodBlock}));missingObject.variables=apiState.variables;
+assert.ok(compile(missingObject).diagnostics.some(item=>/Create a Servo object/.test(item.message)));
+const unsupportedSignature={...callSignature,supported:false,reason:'Templates need Advanced C++.'};
+assert.ok(compile(snapshot(apiBlock('arduino_library_call',unsupportedSignature))).diagnostics.some(item=>/Templates/.test(item.message)));
+const rawCpp=block('arduino_cpp_expression',{CODE:'nullptr',RETURN_TYPE:'cpp'});
+valid(snapshot(apiBlock('arduino_library_call',{header:'Test.h',library:'Test',qualifiedName:'takePointer',name:'takePointer',parameters:[{name:'pointer',type:'void *',kind:'cpp'}],returnKind:'void'}, {}, {ARG_0:rawCpp})));
+console.log('Generated API calls passed: automatic headers, object declarations, typed arguments, missing instances, unsupported signatures, and C++ pointer slots.');

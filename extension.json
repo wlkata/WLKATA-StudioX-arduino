@@ -1,6 +1,6 @@
 {
   "manifestVersion": 2,
-  "extensionApiVersion": 1,
+  "extensionApiVersion": 2,
   "name": "arduino",
   "displayName": "Arduino",
   "version": "0.1.0",
@@ -22,7 +22,9 @@
       "colour": "#00979D",
       "files": [
         "blocks/blocks.json"
-      ]
+      ],
+      "javascript": "frontend/libraryBlocks.js",
+      "toolbox": false
     },
     "setup": {
       "python": "backend/setup.py"

@@ -5,13 +5,13 @@
     'math_number', 'math_arithmetic', 'math_single', 'math_round', 'math_modulo', 'math_constant',
     'logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'logic_ternary',
     'variables_get', 'text', 'text_join', 'text_length', 'text_isEmpty',
-    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low', 'arduino_cpp_expression',
+    'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low', 'arduino_cpp_expression', 'arduino_type', 'arduino_class', 'arduino_instance_call', 'arduino_library_value', 'arduino_library_object_ref', 'arduino_library_constant',
   ]);
   const statements = new Set([
     'variables_set', 'math_change', 'text_append', 'text_print', 'controls_if',
     'controls_repeat_ext', 'controls_repeat', 'controls_whileUntil', 'controls_for', 'controls_flow_statements',
     'arduino_setup', 'arduino_loop', 'arduino_pin_mode', 'arduino_digital_write',
-    'arduino_include', 'arduino_cpp_declaration', 'arduino_cpp_statement', 'arduino_analog_write', 'arduino_digital_write_value', 'arduino_tone', 'arduino_no_tone', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
+    'arduino_include', 'arduino_cpp_declaration', 'arduino_cpp_statement', 'arduino_library_call', 'arduino_library_object', 'arduino_analog_write', 'arduino_digital_write_value', 'arduino_tone', 'arduino_no_tone', 'arduino_delay', 'arduino_serial_print', 'arduino_serial_begin',
   ]);
   const types = { number: 'double', boolean: 'bool', text: 'String' };
   const defaults = { number: '0', boolean: 'false', text: 'String("")' };
@@ -35,6 +35,8 @@
     return out + '"';
   }
 
+  const nativeTypes = {int:'number',long:'number','unsigned int':'number','unsigned long':'number',
+    float:'number',double:'number',char:'number',byte:'number',uint8_t:'number',uint16_t:'number',uint32_t:'number',bool:'boolean',String:'text'};
   function compile(snapshot) {
     const state = snapshot && snapshot.state || snapshot || {};
     const roots = (state.blocks && state.blocks.blocks || []).slice().sort((a, b) =>
@@ -49,12 +51,53 @@
     let hasSerialBegin = false;
     const includes = new Set(['Arduino.h', 'math.h']);
     const nativeGlobals = [];
+    const libraryObjects = new Map();
+    const signatures = new Map();
     function error(block, message) {
       const key = (block && block.id || '') + ':' + message;
       if (!diagnosticKeys.has(key)) {
         diagnosticKeys.add(key);
         diagnostics.push({ blockId: block && block.id || '', type: block && block.type || '', message, severity: 'error' });
       }
+    }
+    function addHeader(block, header) {
+      if (typeof header !== 'string' || !/^[A-Za-z0-9_][A-Za-z0-9_./+-]*$/.test(header) || header.length > 200 || header.split('/').some(part => ['', '.', '..'].includes(part))) {
+        error(block, 'Enter a header name such as Servo.h without quotes, angle brackets, or parent paths.');
+      } else includes.add(header);
+    }
+    const isObject = kind => typeof kind === 'string' && kind.startsWith('object:') && cppName(kind.slice(7));
+    const cppType = kind => isObject(kind) ? kind.slice(7) : types[kind];
+    const cppName = value => typeof value === 'string' && /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*$/.test(value);
+    function signature(block) {
+      if (signatures.has(block)) return signatures.get(block);
+      const spec = block.extraState && block.extraState.signature;
+      if (!spec || !cppName(spec.qualifiedName) || spec.owner && !cppName(spec.owner) || !Array.isArray(spec.parameters || []) || (spec.parameters || []).length > 16) {
+        error(block, 'Choose this library block again from the library/header toolbox. Its signature is missing or invalid.');
+        return null;
+      }
+      if (spec.supported === false) error(block, spec.reason || 'This declaration requires Advanced C++.');
+      addHeader(block, spec.header);
+      signatures.set(block, spec);
+      return spec;
+    }
+    function objectVariable(block, spec) {
+      const saved = field(block, 'VAR', null);
+      const id = saved && typeof saved === 'object' ? saved.id : saved;
+      const display = variableNames.get(id) || saved && saved.name;
+      if (!id || !display) { error(block, 'Choose a library object.'); return { id: '', display: '', cpp: 'missing_object' }; }
+      return { id, display, cpp: 'obj_' + String(display).replace(/[^A-Za-z0-9_]/g, '_') };
+    }
+    function resolveObject(block, spec) {
+      const variable = objectVariable(block, spec);
+      const created = libraryObjects.get(variable.id);
+      if (created && created.spec.owner === spec.owner) return created.cpp;
+      const assigned = variables.get(variable.id);
+      if (assigned && assigned.type === 'object:' + spec.owner) return assigned.cpp;
+      if (assigned && assigned.hasSet) { error(block, 'Variable ' + variable.display + ' is not declared as ' + spec.owner + '.'); return assigned.cpp; }
+      const global = (spec.instances || []).find(item => item.name === variable.display && cppName(item.qualifiedName));
+      if (global) return global.qualifiedName;
+      error(block, 'Create a ' + spec.owner + ' object named ' + (variable.display || 'this object') + ' before using this block.');
+      return variable.cpp;
     }
     function walk(block, parent) {
       if (!block) return;
@@ -65,6 +108,20 @@
       walk(next(block), parent);
     }
     roots.forEach(block => walk(block, null));
+    for (const {block,parent} of nodes) {
+      if (!block.type.startsWith('arduino_library_') && !['arduino_class','arduino_instance_call'].includes(block.type)) continue;
+      const spec = signature(block);
+      if (block.type === 'arduino_library_object' && spec) {
+        if (parent) error(block, 'Place library object creation at the top level.');
+        if (spec.constructor !== true || !cppName(spec.owner)) error(block, 'Choose a library constructor.');
+        const variable = objectVariable(block, spec);
+        if (libraryObjects.has(variable.id)) error(block, 'This library object is already created. Choose another object variable.');
+        let cpp = variable.cpp;
+        if ([...libraryObjects.values()].some(item => item.cpp === cpp)) cpp += '_' + libraryObjects.size;
+        libraryObjects.set(variable.id, { ...variable, cpp, block, spec });
+      }
+    }
+
     function variable(block) {
       const saved = field(block, 'VAR', null);
       const id = saved && typeof saved === 'object' ? saved.id : saved;
@@ -78,11 +135,46 @@
       }
       return variables.get(id);
     }
-    for (const { block } of nodes) if (['variables_get', 'variables_set', 'math_change', 'text_append', 'controls_for'].includes(block.type)) variable(block);
+    for (const { block } of nodes) if (['variables_get', 'variables_set', 'math_change', 'text_append', 'controls_for'].includes(block.type)) {
+      const entry = variable(block); if (block.type === 'variables_set') entry.hasSet = true;
+    }
+    function declarationInfo(block) {
+      if (!block || disabled(block)) return null;
+      if (block.type === 'arduino_type') {
+        const name = field(block, 'TYPE', 'int');
+        if (!Object.prototype.hasOwnProperty.call(nativeTypes, name)) { error(block, 'Choose a supported C++ variable type.'); return null; }
+        return {type:nativeTypes[name], nativeType:name};
+      }
+      if (block.type === 'arduino_class' || block.type === 'arduino_library_value' && block.extraState?.signature?.constructor === true) {
+        const spec = signature(block);
+        if (!spec || spec.constructor !== true || !cppName(spec.owner)) { error(block, 'Choose a class constructor.'); return null; }
+        return {type:'object:' + spec.owner, nativeType:spec.owner, spec, source:block};
+      }
+      return null;
+    }
+    // Type/class values are declaration markers, never runtime allocations.
+    for (const {block,parent} of nodes) {
+      if (block.type !== 'variables_set') continue;
+      const declaration = declarationInfo(child(block, 'VALUE'));
+      if (!declaration) continue;
+      const entry = variable(block);
+      if (entry.declaration || libraryObjects.has(field(block,'VAR')?.id || field(block,'VAR'))) error(block, 'Declare each variable only once.');
+      if (parent && parent.type !== 'arduino_setup') error(block, 'Place declarations at the top level or directly inside Setup.');
+      entry.declaration = declaration; entry.type = declaration.type;
+      entry.declarationBlock = block;
+    }
     function infer(block) {
       if (!block || disabled(block)) return null;
       if (block.type === 'variables_get') return variable(block).type;
-      if (block.type === 'arduino_cpp_expression') return types[field(block, 'RETURN_TYPE')] ? field(block, 'RETURN_TYPE') : 'number';
+      if (block.type === 'arduino_library_object_ref') return 'cpp';
+      if (block.type === 'arduino_type') return declarationInfo(block)?.type;
+      if (block.type === 'arduino_class') return declarationInfo(block)?.type;
+      if (['arduino_library_value','arduino_instance_call'].includes(block.type)) {
+        const spec = signature(block);
+        return spec && spec.constructor === true ? 'object:' + spec.owner : spec?.returnKind || 'cpp';
+      }
+      if (block.type === 'arduino_library_constant') return signature(block)?.kind || 'cpp';
+      if (block.type === 'arduino_cpp_expression') return field(block, 'RETURN_TYPE') === 'cpp' ? 'cpp' : types[field(block, 'RETURN_TYPE')] ? field(block, 'RETURN_TYPE') : 'number';
       if (block.type === 'logic_ternary') return infer(child(block, 'THEN')) || infer(child(block, 'ELSE'));
       if (['logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'text_isEmpty', 'arduino_digital_read', 'arduino_high_low'].includes(block.type)) return 'boolean';
       if (['text', 'text_join'].includes(block.type)) return 'text';
@@ -96,13 +188,17 @@
         else if (block.type === 'math_change' || block.type === 'controls_for') kind = 'number';
         else if (block.type === 'text_append') kind = 'text';
         else continue;
+        if (kind && !types[kind] && !isObject(kind)) { error(block, 'This C++ value cannot be stored in a standard Blockly variable. Use a constructor for object variables.'); kind = null; }
         const entry = variable(block);
         if (kind && !entry.type) { entry.type = kind; changed = true; }
         else if (kind && entry.type !== kind) error(block, 'Variable "' + entry.display + '" changes type. Arduino variables must keep one type.');
       }
       if (!changed) break;
     }
-    for (const value of variables.values()) if (!value.type) value.type = 'number';
+    for (const value of variables.values()) {
+      if (!value.type) value.type = 'number';
+      if (isObject(value.type) && !value.declaration) error(null, 'Declare class variable "' + value.display + '" with a class value before assigning or using it.');
+    }
     for (const { block, parent } of nodes) {
       if (!expressions.has(block.type) && !statements.has(block.type)) {
         error(block, 'Unsupported Arduino block: ' + block.type + '. Robot, Python, lists, and Blockly functions are not supported in this version.');
@@ -114,9 +210,7 @@
       if (['arduino_include', 'arduino_cpp_declaration'].includes(block.type) && parent) error(block, 'Place library includes and C++ declarations at the top level.');
       if (block.type === 'arduino_include') {
         const header = String(field(block, 'HEADER', '')).trim();
-        if (!/^[A-Za-z0-9_][A-Za-z0-9_./+-]*$/.test(header) || header.length > 200 || header.split('/').some(part => ['', '.', '..'].includes(part))) {
-          error(block, 'Enter a header name such as Servo.h without quotes, angle brackets, or parent paths.');
-        } else includes.add(header);
+        addHeader(block, header);
       }
       if (block.type === 'arduino_cpp_declaration') nativeGlobals.push(nativeCode(block));
 
@@ -143,6 +237,33 @@
       const value = expr(nested);
       if (expected && value.type !== expected) error(nested, input + ' needs ' + expected + ', but this value is ' + value.type + '.');
       return value;
+    }
+    function libraryArguments(block, spec) {
+      const optional = !!(block.extraState && block.extraState.optional);
+      return (spec.parameters || []).flatMap((parameter, index) => {
+        if (parameter.optional && !optional) return [];
+        const kind = parameter.kind;
+        if (!['number', 'boolean', 'text', 'cpp'].includes(kind)) { error(block, 'Unsupported library parameter type.'); return ['0']; }
+        const argument = exprInput(block, 'ARG_' + index, kind === 'cpp' ? null : kind);
+        const code = argument.code;
+        if (kind === 'cpp') return [code];
+        if (kind === 'text') {
+          const source = child(block, 'ARG_' + index);
+          if (parameter.type.includes('*') && source?.type === 'text') return [cppString(field(source, 'TEXT', ''))];
+          if (parameter.type.includes('std::string')) return ['std::string(String(' + code + ').c_str())'];
+          return [parameter.type.includes('*') ? 'String(' + code + ').c_str()' : 'String(' + code + ')'];
+        }
+        if (!/^[A-Za-z_][A-Za-z0-9_: ]*$/.test(parameter.type || '')) { error(block, 'Use Advanced C++ for this parameter type.'); return [code]; }
+        return ['(' + parameter.type + ')(' + code + ')'];
+      });
+    }
+    function libraryCall(block) {
+      const spec = signature(block);
+      if (!spec) return '0';
+      if (spec.constructor === true) { error(block, 'Connect this constructor value to a set variable block.'); return '0'; }
+      const callee = spec.owner && !spec.static ? resolveObject(block, spec) + '.' + spec.name : spec.qualifiedName;
+      if (spec.owner && !spec.static && !cppName(spec.name)) { error(block, 'Invalid library method name.'); return '0'; }
+      return callee + '(' + libraryArguments(block, spec).join(', ') + ')';
     }
     function expr(block) {
       const number = code => ({ code, type: 'number' });
@@ -216,11 +337,37 @@
         case 'arduino_analog_read': return number('analogRead((uint8_t)(' + n('PIN') + '))');
         case 'arduino_millis': return number('millis()');
         case 'arduino_builtin_led': return number('LED_BUILTIN');
+        case 'arduino_type': case 'arduino_class':
+          error(block, 'Connect this type/class value directly to a set variable block to declare it.');
+          return {code:'0',type:'cpp'};
+        case 'arduino_instance_call':
+        case 'arduino_library_value': {
+          const spec = signature(block);
+          if (!spec) return number('0');
+          if (spec.constructor === true) {
+            if (!cppName(spec.owner)) { error(block, 'Choose a valid constructor.'); return {code:'0',type:'cpp'}; }
+            error(block, 'Connect this class value directly to a set variable block to declare it.');
+            return {code:'0',type:'object:' + spec.owner};
+          }
+          if (spec.returnKind === 'void') error(block, 'This library function does not return a value.');
+          let code = libraryCall(block);
+          if (spec.returnKind === 'text') code = spec.returnType.includes('std::string') ? 'String((' + code + ').c_str())' : 'String(' + code + ')';
+          return { code, type: spec.returnKind || 'cpp' };
+        }
+        case 'arduino_library_object_ref': {
+          const spec = signature(block);
+          return {code: spec ? resolveObject(block, spec) : '0', type: 'cpp'};
+        }
+        case 'arduino_library_constant': {
+          const spec = signature(block);
+          return {code: spec ? (spec.kind === 'text' ? 'String(' + spec.qualifiedName + ')' : spec.qualifiedName) : '0', type: spec && spec.kind || 'cpp'};
+        }
+
         case 'arduino_cpp_expression': {
           const type = field(block, 'RETURN_TYPE');
-          if (!types[type]) error(block, 'Choose a C++ expression return type.');
+          if (!types[type] && type !== 'cpp') error(block, 'Choose a C++ expression return type.');
           const code = nativeCode(block) || '0';
-          return { code: type === 'text' ? 'String(' + code + ')' : '(' + code + ')', type: types[type] ? type : 'number' };
+          return { code: type === 'text' ? 'String(' + code + ')' : '(' + code + ')', type: type === 'cpp' ? 'cpp' : types[type] ? type : 'number' };
         }
 
         case 'arduino_pin': {
@@ -257,7 +404,9 @@
       const variableEntry = () => variable(block);
       switch (block.type) {
         case 'variables_set': {
-          const target = variableEntry(), source = exprInput(block, 'VALUE');
+          const target = variableEntry();
+          if (declarationInfo(child(block, 'VALUE'))) return '';
+          const source = exprInput(block, 'VALUE');
           if (target.type !== source.type) error(block, 'Variable "' + target.display + '" must keep type ' + target.type + '.');
           return line(target.cpp + ' = ' + source.code + ';');
         }
@@ -323,6 +472,13 @@
           return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), ' + (level === 'HIGH' ? 'HIGH' : 'LOW') + ');');
         }
         case 'arduino_include': case 'arduino_cpp_declaration': return '';
+        case 'arduino_library_object': return '';
+        case 'arduino_instance_call':
+        case 'arduino_library_value':
+          if (!block.extraState?.statement && signature(block)?.returnKind !== 'void') { error(block, 'Connect this value block to a statement before compiling.'); return ''; }
+          if (signature(block)?.constructor === true) { error(block, 'Connect the constructor to a set variable block.'); return ''; }
+          return line(libraryCall(block) + ';');
+        case 'arduino_library_call': return line(libraryCall(block) + ';');
         case 'arduino_cpp_statement': return nativeCode(block).split('\n').map(code => line(code)).join('');
         case 'arduino_digital_write_value':
           return line('digitalWrite((uint8_t)(' + value('PIN', 'number') + '), (' + value('STATE', 'boolean') + ') ? HIGH : LOW);');
@@ -357,15 +513,37 @@
     }
     if (!roots.length) error(null, 'Add blocks to the workspace before compiling.');
     if (usesSerial && !hasSerialBegin) setup = '  Serial.begin(9600);\n' + setup;
-    let globals = '';
-    for (const value of variables.values()) globals += types[value.type] + ' ' + value.cpp + ' = ' + defaults[value.type] + ';\n';
+    let globals = '', classGlobals = '';
+    function staticArgument(block) {
+      if (!block) return;
+      const allowed = block.type === 'text' || block.type.startsWith('math_') || block.type.startsWith('logic_') ||
+        ['arduino_library_constant','arduino_cpp_expression','arduino_builtin_led','arduino_pin','arduino_high_low'].includes(block.type);
+      if (!allowed) error(block, 'Class declaration arguments must be constant values or C++ expressions available before Setup.');
+      Object.keys(block.inputs || {}).forEach(name => staticArgument(child(block,name)));
+    }
+    for (const value of variables.values()) {
+      if (isObject(value.type)) {
+        const declaration = value.declaration;
+        if (!declaration) continue;
+        Object.keys(declaration.source.inputs || {}).forEach(name => staticArgument(child(declaration.source,name)));
+        const args = libraryArguments(declaration.source, declaration.spec);
+        classGlobals += value.declaration.nativeType + ' ' + value.cpp + (args.length ? '(' + args.join(', ') + ')' : '') + ';\n';
+      } else {
+        globals += (value.declaration?.nativeType || cppType(value.type)) + ' ' + value.cpp + ' = ' + defaults[value.type] + ';\n';
+      }
+    }
     const modulo = nodes.some(item => item.block.type === 'math_modulo')
       ? 'static double studioxModulo(double a, double b) {\n  double r = fmod(a, b);\n  return r != 0 && ((r < 0) != (b < 0)) ? r + b : r;\n}\n\n' : '';
+    let objectGlobals = '';
+    for (const object of libraryObjects.values()) {
+      const args = libraryArguments(object.block, object.spec);
+      objectGlobals += object.spec.owner + ' ' + object.cpp + (args.length ? '(' + args.join(', ') + ')' : '') + ';\n';
+    }
     const code = '// Generated by WLKATA StudioX Arduino.\n' + [...includes].map(header => '#include <' + header + '>\n').join('') + '\n' + modulo +
-      nativeGlobals.map(code => code + '\n').join('') + (nativeGlobals.length ? '\n' : '') + globals + (globals ? '\n' : '') + 'void setup() {\n' + setup + '}\n\nvoid loop() {\n' + loop + '}\n';
+      globals + (globals ? '\n' : '') + nativeGlobals.map(code => code + '\n').join('') + (nativeGlobals.length ? '\n' : '') + classGlobals + (classGlobals ? '\n' : '') + objectGlobals + (objectGlobals ? '\n' : '') + 'void setup() {\n' + setup + '}\n\nvoid loop() {\n' + loop + '}\n';
     return { code, diagnostics, supportedBlockTypes: supportedBlockTypes.slice() };
   }
-  const api = { compile, supportedBlockTypes, cppString };
+  const api = { compile, supportedBlockTypes, cppString, nativeTypes };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.StudioXArduinoCompiler = api;
 })(typeof window !== 'undefined' ? window : globalThis);

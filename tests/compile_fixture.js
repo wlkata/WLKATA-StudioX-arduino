@@ -5,7 +5,20 @@ const { compile, supportedBlockTypes } = require('../frontend/compiler');
 const { block, number, text, boolean, snapshot } = require('./test_compiler');
 const get = id => block('variables_get', { VAR: { id } });
 const print = value => block('text_print', {}, { TEXT: value });
+const spec={header:'Arduino.h',library:'Fixture',owner:'String',qualifiedName:'String',name:'String',constructor:true,parameters:[],returnKind:'void',supported:true};
+const withSpec=(type,signature,fields={},inputs={})=>{const item=block(type,fields,inputs);item.extraState={signature};if(type==='arduino_instance_call')item.extraState.statement=true;return item;};
+const fixtureObject=withSpec('arduino_library_object',spec,{VAR:{id:'fixture'}});
+const fixtureRef=withSpec('arduino_library_object_ref',{...spec,constructor:false},{VAR:{id:'fixture'}});
 const items = [
+  block('variables_set',{VAR:{id:'managedString'}},{VALUE:withSpec('arduino_library_value',spec)}),
+  block('variables_set',{VAR:{id:'stringAlias'}},{VALUE:withSpec('arduino_class',spec)}),
+  block('variables_set',{VAR:{id:'explicitPin'}},{VALUE:block('arduino_type',{TYPE:'int'})}),
+  withSpec('arduino_instance_call',{...spec,constructor:false,qualifiedName:'String::length',name:'length',returnKind:'number',returnType:'unsigned int'},{VAR:{id:'stringAlias'}}),
+  withSpec('arduino_library_call',{header:'Arduino.h',library:'Fixture',qualifiedName:'useFixture',name:'useFixture',parameters:[{type:'const String &',name:'object',kind:'cpp'}],returnKind:'void',supported:true},{},{ARG_0:get('stringAlias')}),
+
+  withSpec('arduino_library_call',{header:'Arduino.h',library:'Fixture',qualifiedName:'useFixture',name:'useFixture',parameters:[{type:'const String &',name:'object',kind:'cpp'}],returnKind:'void',supported:true},{},{ARG_0:fixtureRef}),
+  print(withSpec('arduino_library_value',{...spec,constructor:false,qualifiedName:'String::length',name:'length',returnType:'int',returnKind:'number'},{VAR:{id:'fixture'}})),
+  print(withSpec('arduino_library_constant',{header:'Arduino.h',library:'Fixture',qualifiedName:'HIGH',name:'HIGH',kind:'number'})),
   block('arduino_serial_begin', { BAUD: 9600 }),
   block('arduino_cpp_statement', { CODE: 'libraryCounter += 1;' }),
   print(block('arduino_cpp_expression', { CODE: 'libraryCounter', RETURN_TYPE: 'number' })),
@@ -40,9 +53,9 @@ for (const op of ['ROOT', 'ABS', 'NEG', 'LN', 'LOG10', 'EXP', 'POW10']) items.pu
 for (const op of ['ROUND', 'ROUNDUP', 'ROUNDDOWN']) items.push(print(block('math_round', { OP: op }, { NUM: number(3.5) })));
 const join = block('text_join', {}, { ADD0: text('value='), ADD1: number(5) });join.extraState={itemCount:2};items.push(print(join));
 for (let i = 0; i < items.length - 1; i++) items[i].next = { block: items[i + 1] };
-const state = snapshot(block('arduino_include', {HEADER:'Wire.h'}), block('arduino_cpp_declaration', {CODE:'int libraryCounter = 0;'}), block('arduino_setup', {}, { DO: items[0] }), block('arduino_loop', {}, { DO:
+const state = snapshot(fixtureObject,block('arduino_cpp_declaration',{CODE:'void useFixture(const String &) {}'}),block('arduino_include', {HEADER:'Wire.h'}), block('arduino_cpp_declaration', {CODE:'int libraryCounter = 0;'}), block('arduino_setup', {}, { DO: items[0] }), block('arduino_loop', {}, { DO:
   block('arduino_digital_write', { LEVEL: 'HIGH' }, { PIN: block('arduino_builtin_led') }, block('arduino_delay', {}, { MS: number(1) })) }));
-state.variables.push({ id: 'label', name: 'class' });
+state.variables.push({id:'explicitPin',name:'explicitPin'},{id:'managedString',name:'managedString'},{id:'stringAlias',name:'stringAlias'},{ id: 'label', name: 'class' },{id:'fixture',name:'fixture',type:'arduino-object:String'});
 const generated = compile(state);
 assert.deepStrictEqual(generated.diagnostics, []);
 const visited = new Set();

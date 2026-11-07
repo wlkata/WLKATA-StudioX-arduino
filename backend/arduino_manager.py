@@ -13,6 +13,8 @@ import threading
 import uuid
 from urllib.parse import urlparse
 from toolchain import installed_cli
+from local_library import validate_source, prepare_zip
+from header_parser import parse_header
 
 FQBN = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_=,.-]+)?$')
 DEFAULT_BOARDS = [
@@ -39,6 +41,7 @@ class ArduinoManager:
         self._jobs = {}
         self._cli_path = ''
         self._loaded = False
+        self._header_cache = {}
 
     def _load_settings(self):
         with self._lock:
@@ -182,6 +185,62 @@ class ArduinoManager:
                               'versions': [library.get('version', '')]})
         return {'success': True, 'libraries': sorted(libraries, key=lambda item: item['name'].lower())}
 
+    def library_catalog(self, board=''):
+        if board:
+            validate_board(board)
+        with self._lock:
+            if self._active:
+                raise RuntimeError('Wait for the active operation before browsing library functions.')
+            args = ['lib', 'list'] + (['--fqbn', board] if board else [])
+            warnings = []
+            try:
+                payload = self._json(args)
+            except RuntimeError as error:
+                if not board:
+                    raise
+                warnings.append(str(error))
+                payload = self._json(['lib', 'list'])
+            libraries = []
+            total_bytes = 0
+            used_keys = set()
+            for item in payload.get('installed_libraries') or []:
+                library = item.get('library') or {}
+                folder = Path(library.get('install_dir') or '')
+                source = Path(library.get('source_dir') or folder / 'src')
+                if not source.is_dir():
+                    source = folder
+                if not folder.is_absolute() or not folder.is_dir():
+                    continue
+                folder = folder.resolve()
+                headers = []
+                candidates = sorted(file for file in source.rglob('*')
+                                    if file.suffix.lower() in ('.h', '.hpp', '.hh') and file.is_file())
+                for file in candidates[:200]:
+                    resolved = file.resolve()
+                    if not resolved.is_relative_to(folder) or resolved.stat().st_size > 1024 * 1024:
+                        warnings.append(library['name'] + ': skipped a header outside the library or larger than 1 MB.')
+                        continue
+                    content = resolved.read_bytes()
+                    total_bytes += len(content)
+                    if total_bytes > 16 * 1024 * 1024:
+                        warnings.append('Header browsing is limited to 16 MB per refresh.')
+                        break
+                    name = file.relative_to(source).as_posix()
+                    key = (str(resolved), hashlib.sha256(content).hexdigest(), name, library['name'])
+                    used_keys.add(key)
+                    if key not in self._header_cache:
+                        self._header_cache[key] = parse_header(content, name, library['name'])
+                    parsed = self._header_cache[key]
+                    if parsed['functions'] or parsed['constants'] or name in library.get('provides_includes', []):
+                        headers.append({'name': name, **parsed})
+                if len(candidates) > 200:
+                    warnings.append(library['name'] + ': only the first 200 headers are shown.')
+                libraries.append({'name': library['name'], 'version': library.get('version', ''), 'headers': headers})
+                if total_bytes > 16 * 1024 * 1024:
+                    break
+            self._header_cache = {key: value for key, value in self._header_cache.items() if key in used_keys}
+            return {'success': True, 'libraries': sorted(libraries, key=lambda item: item['name'].lower()), 'warnings': warnings}
+
     def search_libraries(self, query):
         if not isinstance(query, str) or not query.strip() or len(query) > 200 or query.strip().startswith('-'):
             raise ValueError('Enter a library name of at most 200 characters.')
@@ -214,6 +273,24 @@ class ArduinoManager:
             raise ValueError('Choose a valid library version.')
         target = name + ('@' + version if version else '')
         return self._new_job('library', None, lambda job: self._run(job, ['lib', 'install', target]))
+
+    def install_local_library(self, path, kind):
+        source = validate_source(path, kind)
+        def install(job):
+            imports = self.home / 'imports'
+            imports.mkdir(parents=True, exist_ok=True)
+            def check_cancel():
+                if job['cancel'].is_set():
+                    raise RuntimeError('Operation cancelled.')
+            with tempfile.TemporaryDirectory(prefix='library-', dir=imports) as temporary:
+                self._append(job, 'Preparing local library: ' + source.name)
+                archive = prepare_zip(source, kind, temporary, check_cancel)
+                check_cancel()
+                # Enable local ZIP installation for this CLI invocation only.
+                # The persistent CLI configuration retains its normal policy.
+                self._run(job, ['lib', 'install', '--zip-path', str(archive)],
+                          extra_env={'ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL': 'true'})
+        return self._new_job('local-library', None, install)
 
     def ports(self):
         data = self._json(['board', 'list'])
@@ -250,14 +327,15 @@ class ArduinoManager:
             except OSError:
                 pass
 
-    def _run(self, job, args, timeout=600):
+    def _run(self, job, args, timeout=600, extra_env=None):
         if job['cancel'].is_set():
             raise RuntimeError('Operation cancelled.')
         command = self._args(args)
         self._append(job, 'arduino-cli ' + ' '.join(args))
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                    text=True, encoding='utf-8', errors='replace', bufsize=1,
-                                   start_new_session=os.name != 'nt')
+                                   start_new_session=os.name != 'nt',
+                                   env={**os.environ, **extra_env} if extra_env else None)
         with self._lock:
             job['process'] = process
         def consume():

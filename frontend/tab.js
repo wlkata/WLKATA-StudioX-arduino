@@ -9,6 +9,9 @@
   let generation = 0;
   let timer;
   let highlights = true;
+  let baseToolbox = null;
+  let catalogRevision = 0;
+  let catalogFingerprint = null;
   const api = window.ExtensionAPI;
   const get = id => document.getElementById('arduino-' + id);
   const message = text => { get('build-status').textContent = text; };
@@ -22,11 +25,15 @@
   }
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   const port = () => get('port').value === 'manual' ? get('manual-port').value.trim() : get('port').value;
+  function matchesBuild() {
+    return !!(compiled && analysis && !analysis.diagnostics.length &&
+      compiled.code === analysis.code && compiled.board === get('board').value);
+  }
   function buttons() {
     const valid = analysis && !analysis.diagnostics.length;
     get('compile').disabled = busy || !available || !valid;
-    get('upload').disabled = busy || !available || !valid || !port() || !compiled ||
-      compiled.code !== analysis.code || compiled.board !== get('board').value;
+    get('upload').disabled = busy || !available || !valid || !port();
+    get('upload').title = matchesBuild() ? 'Upload the existing build for this program and board' : 'Compile this program, then upload';
     get('install-core').disabled = busy || !available;
     get('cancel').hidden = !busy;
     get('cancel').disabled = !operation;
@@ -44,10 +51,7 @@
       if (token !== generation) return;
       analysis = window.StudioXArduinoCompiler.compile(snapshot);
       get('code').value = analysis.code;
-      if (compiled && compiled.code !== analysis.code) {
-        compiled = null;
-        if (!busy) message('Workspace changed. Compile again before uploading.');
-      }
+
       editor.setDiagnostics(highlights ? analysis.diagnostics : []);
       get('validation-status').textContent = analysis.diagnostics.length
         ? analysis.diagnostics.length + ' workspace problem' + (analysis.diagnostics.length === 1 ? '' : 's')
@@ -66,7 +70,7 @@
         li.appendChild(node);
         problems.appendChild(li);
       });
-      if (!analysis.diagnostics.length && !compiled && !busy) message('Ready to compile.');
+      if (!analysis.diagnostics.length && !busy) message(matchesBuild() ? 'Ready to upload.' : 'Ready to compile and upload.');
     } catch (error) {
       analysis = null;
       compiled = null;
@@ -76,10 +80,25 @@
   }
   function validateSoon() {
     clearTimeout(timer);
-    // Invalidate upload immediately, before the debounced generation runs.
-    compiled = null;
+    // Keep the cached artifact: layout edits may leave generated code unchanged.
+    // Upload regenerates and validates the program before deciding to reuse it.
     buttons();
     timer = setTimeout(analyze, 180);
+  }
+  async function refreshLibraryCatalog() {
+    if (!editor || !baseToolbox) return;
+    const revision = ++catalogRevision;
+    const board = get('board').value;
+    let catalog;
+    try { catalog = await request('/libraries/catalog', { board }); }
+    catch (error) { catalog = { libraries: [], error: error.message }; }
+    if (revision !== catalogRevision || get('board').value !== board) return;
+    const fingerprint = JSON.stringify(catalog);
+    if (fingerprint !== catalogFingerprint) {
+      window.StudioXArduinoLibraryBlocks.setCatalog(editor.workspace, catalog);
+      editor.updateToolbox(window.StudioXArduinoToolbox.build(baseToolbox, catalog));
+      catalogFingerprint = fingerprint;
+    }
   }
   async function refresh() {
     get('refresh-devices').disabled = true;
@@ -113,6 +132,7 @@
         const manual = document.createElement('option'); manual.value = 'manual'; manual.textContent = 'Enter port manually…'; get('port').appendChild(manual);
         if ([...get('port').options].some(option => option.value === savedPort)) get('port').value = savedPort;
       }
+      await refreshLibraryCatalog();
       const failure = results.find(result => result.status === 'rejected');
       if (failure) message('Device discovery: ' + failure.reason.message + ' Install board support if this is a new setup.');
     } catch (error) { available = false; get('tooling-status').textContent = error.message; }
@@ -123,21 +143,29 @@
     buttons();
     let failures = 0;
     while (true) {
-      try {
-        const job = await request('/jobs/' + identifier);
-        failures = 0;
-        get('log').textContent = job.log.join('\n');
-        if (onProgress) onProgress(job);
-        get('log').scrollTop = get('log').scrollHeight;
-        if (job.done) {
-          if (!job.ok) throw new Error(job.error || 'Operation failed.');
-          return job;
-        }
-      } catch (error) {
+      let job;
+      try { job = await request('/jobs/' + identifier); }
+      catch (error) {
         if (++failures >= 3) throw error;
+        await pause(300);
+        continue;
+      }
+      failures = 0;
+      get('log').textContent = job.log.join('\n');
+      if (onProgress) onProgress(job);
+      get('log').scrollTop = get('log').scrollHeight;
+      if (job.done) {
+        if (!job.ok) throw new Error(job.error || 'Operation failed.');
+        return job;
       }
       await pause(300);
     }
+  }
+  async function startJob(path, body) {
+    operation = null;
+    buttons();
+    const started = await request(path, body);
+    return watchJob(started.jobId);
   }
   async function perform(kind) {
     if (busy) return;
@@ -148,31 +176,41 @@
       await analyze();
       const board = get('board').value;
       const code = analysis && analysis.code;
-      if (kind !== 'core' && (!analysis || analysis.diagnostics.length)) {
-        throw new Error('Resolve workspace problems before compiling or uploading.');
+      const destination = port();
+      const unchanged = () => analysis && !analysis.diagnostics.length && analysis.code === code && get('board').value === board;
+      if (kind === 'core') {
+        compiled = null;
+        message('Installing board support…');
+        await startJob('/core/install', { board });
+        message('Board support installed.');
+        return;
       }
-      if (kind === 'upload' && (!compiled || compiled.code !== code || compiled.board !== board || !port())) {
-        throw new Error('Compile the current workspace and select a port before uploading.');
+      if (!available) throw new Error('Set up Arduino CLI before compiling or uploading.');
+      if (!analysis || analysis.diagnostics.length) throw new Error('Resolve workspace problems before compiling or uploading.');
+      if (kind === 'upload' && !destination) throw new Error('Select a serial port before uploading.');
+      if (kind === 'compile' || !matchesBuild()) {
+        compiled = null;
+        message(kind === 'upload' ? 'Compiling before upload…' : 'Compiling…');
+        const job = await startJob('/compile', { code, board });
+        compiled = { id: job.id, code, board };
+        await analyze();
+        if (!unchanged()) {
+          message('Compiled an older workspace. Upload again to include your latest changes.');
+          return;
+        }
       }
-      message(kind === 'compile' ? 'Compiling…' : kind === 'upload' ? 'Uploading…' : 'Installing board support…');
-      let started;
       if (kind === 'compile') {
-        compiled = null;
-        started = await request('/compile', { code, board });
-      } else if (kind === 'upload') {
-        started = await request('/upload', { compileId: compiled.id, port: port() });
-      } else {
-        compiled = null;
-        started = await request('/core/install', { board });
+        message('Compiled successfully. Select a port and upload.');
+        return;
       }
-      const job = await watchJob(started.jobId);
+      // Revalidate even for a cached build. Pending Blockly events must not
+      // allow an older program to be uploaded after an edit.
       await analyze();
-      if (kind === 'compile') {
-        if (analysis && !analysis.diagnostics.length && analysis.code === code && get('board').value === board) {
-          compiled = { id: job.id, code, board };
-          message('Compiled successfully. Select a port and upload.');
-        } else message('Compiled an older workspace. Compile again to include your latest changes.');
-      } else message(kind === 'upload' ? 'Upload complete.' : 'Board support installed.');
+      if (!unchanged() || !matchesBuild()) throw new Error('Workspace changed. Upload again to compile your latest changes.');
+      message('Uploading…');
+      await startJob('/upload', { compileId: compiled.id, port: destination });
+      await analyze();
+      message(unchanged() ? 'Upload complete.' : 'Upload complete. The workspace changed during upload; upload again to include those edits.');
     } catch (error) { message(error.message); }
     finally {
       busy = false;
@@ -183,7 +221,9 @@
   }
   async function runToolJob(path, body, onProgress) {
     if (busy) throw new Error('Another Arduino operation is running.');
-    busy = true; compiled = null; showOutput('log'); buttons();
+    busy = true;
+    if (path.endsWith('/install') || path.endsWith('/install-local')) compiled = null;
+    showOutput('log'); buttons();
     try {
       const started = await request(path, body);
       return await watchJob(started.jobId, onProgress);
@@ -209,8 +249,8 @@
     if (!api || !api.getWorkspaceSnapshot || !api.getWorkspaceToolbox || !api.appendWorkspaceSnapshot || !api.pasteBlockClipboard) {
       message('This extension needs a StudioX version with independent-workspace transfer APIs.'); return;
     }
-    for (const asset of ['compiler', 'toolbox', 'editor', 'managers']) {
-      const name = { compiler: 'StudioXArduinoCompiler', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
+    for (const asset of ['compiler', 'scaffold', 'toolbox', 'editor', 'managers']) {
+      const name = { compiler: 'StudioXArduinoCompiler', scaffold: 'StudioXArduinoScaffold', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
       if (window[name]) continue;
       await new Promise((resolve, reject) => {
         const script = document.createElement('script'); script.src = new URL(asset + '.js', assetBase).href;
@@ -218,9 +258,11 @@
         document.body.appendChild(script);
       });
     }
-    const toolbox = window.StudioXArduinoToolbox.build(await api.getWorkspaceToolbox());
+    baseToolbox = await api.getWorkspaceToolbox();
+    const toolbox = window.StudioXArduinoToolbox.build(baseToolbox);
     editor = window.StudioXArduinoEditor.create(get('blockly'), {
       api, toolbox,
+      onManageLibraries: () => managers.openLibraries(),
       scale: window.AppPreferences && AppPreferences.getBlockScale ? AppPreferences.getBlockScale() : 1,
       isActive: () => api.isActive('arduino'),
       onChange: validateSoon,
@@ -234,12 +276,6 @@
     get('paste-blocks').addEventListener('click', () => {
       try { const blocks = editor.paste(); message(blocks.length ? 'Pasted blocks into Arduino.' : 'Copy blocks first.'); }
       catch (error) { message(error.message); }
-    });
-    get('add-entries').addEventListener('click', () => {
-      try {
-        const blocks = editor.addEntryBlocks();
-        message(blocks.length ? 'Added missing Setup / Loop blocks.' : 'Setup and Loop are already in the Arduino workspace.');
-      } catch (error) { message(error.message); }
     });
     get('import-main').addEventListener('click', async () => {
       try {
@@ -276,7 +312,11 @@
     get('compile').addEventListener('click', () => perform('compile'));
     get('upload').addEventListener('click', () => perform('upload'));
     menuAction('install-core', () => perform('core'));
-    const managers = window.StudioXArduinoManagers.create({ get, request, runToolJob, cancelOperation, addIncludes: headers => { const added = editor.addIncludes(headers); message(added.length ? 'Added library include blocks.' : 'These headers are already included.'); return added; } });
+    const managers = window.StudioXArduinoManagers.create({ get, request, runToolJob, cancelOperation, chooseLocalLibrary: kind => require('electron').ipcRenderer.invoke(
+      kind === 'folder' ? 'dialog:openFolder' : 'dialog:openFile',
+      { title: kind === 'folder' ? 'Select Arduino library folder' : 'Select Arduino library ZIP',
+        buttonLabel: 'Select library', filters: [{ name: 'Arduino library ZIP', extensions: ['zip'] }] }),
+      addIncludes: headers => { const added = editor.addIncludes(headers); message(added.length ? 'Added library include blocks.' : 'These headers are already included.'); return added; } });
     menuAction('manage-boards', () => managers.openBoards());
     menuAction('manage-libraries', () => managers.openLibraries());
     get('cancel').addEventListener('click', async () => {
@@ -290,8 +330,8 @@
     });
     get('board').value = api.getSetting('arduino.board', 'arduino:avr:uno');
     get('board').addEventListener('change', () => {
-      compiled = null; api.setSetting('arduino.board', get('board').value);
-      message('Board changed. Compile again before uploading.'); buttons();
+      api.setSetting('arduino.board', get('board').value);
+      message('Board selected. Upload will compile if needed.'); buttons(); refreshLibraryCatalog();
     });
     get('port').addEventListener('change', () => {
       get('manual-port-label').hidden = get('port').value !== 'manual'; buttons();

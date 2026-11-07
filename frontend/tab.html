@@ -6,7 +6,6 @@
       <button type="button" class="arduino-button arduino-quiet" id="arduino-redo" title="Redo in Arduino workspace">Redo</button>
       <button type="button" class="arduino-button arduino-quiet" id="arduino-copy-blocks">Copy</button>
       <button type="button" class="arduino-button arduino-quiet" id="arduino-paste-blocks">Paste</button>
-      <button type="button" class="arduino-button" id="arduino-add-entries" title="Insert any missing Setup and Loop entry blocks">Setup / Loop</button>
       <button type="button" class="arduino-button" id="arduino-import-main" title="Append a snapshot of all blocks from the main Blockly workspace">Import from Blockly</button>
     </div>
     <div class="arduino-toolbar-group arduino-target-controls">
@@ -59,6 +58,7 @@
     <div class="arduino-section-heading"><h3>Libraries</h3><button type="button" class="arduino-button arduino-quiet" id="arduino-library-manager-close">Close</button></div>
     <p>Install Arduino libraries, then add their headers to this workspace. Use C++ blocks to declare instances and call their APIs.</p>
     <form id="arduino-library-search-form" class="arduino-manager-search"><input id="arduino-library-query" placeholder="Search libraries, e.g. Servo" aria-label="Search Arduino libraries"><button class="arduino-button" type="submit">Search</button><button type="button" class="arduino-button" id="arduino-library-installed">Installed</button><button type="button" class="arduino-button" id="arduino-library-refresh">Refresh index</button></form>
+    <div class="arduino-manager-search"><span>Install locally</span><button type="button" class="arduino-button" id="arduino-library-local-folder">From folder…</button><button type="button" class="arduino-button" id="arduino-library-local-zip">From ZIP…</button></div>
     <form id="arduino-library-include-form" class="arduino-manager-search"><input id="arduino-library-header" placeholder="Header name, e.g. Wire.h" aria-label="Library header to include"><button type="submit" class="arduino-button">Add include</button></form>
     <p id="arduino-library-manager-status" role="status"></p><div id="arduino-library-results" class="arduino-manager-results"></div>
     <pre id="arduino-library-manager-log" class="arduino-manager-log" hidden></pre><button type="button" class="arduino-button" id="arduino-library-manager-cancel" hidden>Cancel operation</button>

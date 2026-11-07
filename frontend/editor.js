@@ -8,8 +8,11 @@
     let lastSelected = null;
     let savedTimer;
     let warningIds = new Set();
+    const entries = {};
+    const entryTypes = StudioXArduinoScaffold.entryTypes;
     const workspace = Blockly.inject(host, {
       toolbox: options.toolbox,
+      maxInstances: { arduino_setup: 1, arduino_loop: 1 },
       grid: { spacing: 20, length: 3, colour: '#a0a0a0', snap: true },
       move: { scrollbars: true, drag: true, wheel: true },
       trashcan: true,
@@ -17,11 +20,51 @@
       zoom: { controls: true, wheel: true, startScale: options.scale || 1, maxScale: 3, minScale: .3, scaleSpeed: 1.2 },
     });
     host.dataset.workspaceId = workspace.id;
+    workspace.registerButtonCallback('ARDUINO_MANAGE_LIBRARIES', () => options.onManageLibraries());
     workspace.registerButtonCallback('CREATE_VARIABLE', button => Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace()));
-    if (Blockly.Variables.flyoutCategory) workspace.registerToolboxCategoryCallback('VARIABLE', ws => Blockly.Variables.flyoutCategory(ws));
+    if (Blockly.Variables.flyoutCategory) workspace.registerToolboxCategoryCallback('VARIABLE', ws => {
+      const blocks = Blockly.Variables.flyoutCategory(ws);
+      for (const type of ['arduino_type','arduino_instance_call']) {
+        const block = Blockly.utils.xml.createElement('block'); block.setAttribute('type',type); blocks.push(block);
+      }
+      return blocks;
+    });
     if (Blockly.Procedures.flyoutCategory) workspace.registerToolboxCategoryCallback('PROCEDURE', ws => Blockly.Procedures.flyoutCategory(ws));
 
-    function snapshot() { return { state: Blockly.serialization.workspaces.save(workspace) }; }
+    function snapshot() {
+      const state = Blockly.serialization.workspaces.save(workspace);
+      (state.blocks && state.blocks.blocks || []).forEach(block => {
+        if (entryTypes.includes(block.type)) delete block.deletable;
+      });
+      return { state };
+    }
+    function attach(block, type) {
+      if (!block || !block.previousConnection) return;
+      let tail = entries[type].getInputTargetBlock('DO');
+      if (!tail) entries[type].getInput('DO').connection.connect(block.previousConnection);
+      else {
+        while (tail.getNextBlock()) tail = tail.getNextBlock();
+        if (tail.nextConnection) tail.nextConnection.connect(block.previousConnection);
+      }
+    }
+    function ensureEntries() {
+      Blockly.Events.disable();
+      try {
+        entryTypes.forEach((type, index) => {
+          const existing = workspace.getBlocksByType(type, false);
+          const entry = existing[0] || workspace.newBlock(type);
+          if (!existing.length) { entry.initSvg(); entry.render(); entry.moveBy(40, 40 + index * 240); }
+          entry.setDeletable(false);
+          entry.isDuplicatable = () => false;
+          entries[type] = entry;
+          for (const duplicate of existing.slice(1)) {
+            const body = duplicate.getInputTargetBlock('DO');
+            if (body) { body.unplug(false); attach(body, type); }
+            duplicate.dispose(false);
+          }
+        });
+      } finally { Blockly.Events.enable(); }
+    }
     function validateDefinitions(state) {
       function check(block) {
         if (!block || !Blockly.Blocks[block.type]) throw new Error('Block definition is not installed: ' + (block && block.type || 'unknown'));
@@ -83,14 +126,26 @@
       workspace.centerOnBlock(blocks[0].id);
     }
     function paste() {
-      const blocks = api.pasteBlockClipboard(workspace);
-      reveal(blocks);
-      return blocks;
+      const temporary = new Blockly.Workspace();
+      try {
+        api.pasteBlockClipboard(temporary);
+        return append(Blockly.serialization.workspaces.save(temporary));
+      } finally { temporary.dispose(); }
     }
     function append(source) {
       const state = source && (source.state || source.workspace) || source;
       validateDefinitions(state);
-      const blocks = api.appendWorkspaceSnapshot(workspace, state);
+      const prepared = StudioXArduinoScaffold.split(state);
+      const previous = Blockly.Events.getGroup();
+      Blockly.Events.setGroup(previous || true);
+      let blocks;
+      try {
+        blocks = api.appendWorkspaceSnapshot(workspace, prepared.state);
+        blocks.forEach((block, index) => {
+          const target = prepared.targets[index] || (block.previousConnection && !block.outputConnection ? 'arduino_setup' : null);
+          if (target) attach(block, target);
+        });
+      } finally { Blockly.Events.setGroup(previous); }
       reveal(blocks);
       return blocks;
     }
@@ -98,15 +153,6 @@
       const existing = new Set(workspace.getBlocksByType('arduino_include', false).map(block => block.getFieldValue('HEADER').trim()));
       const missing = [...new Set(headers)].filter(header => !existing.has(header));
       return append({ blocks: { languageVersion: 0, blocks: missing.map((header, index) => ({ type: 'arduino_include', fields: { HEADER: header }, x: 40, y: 40 + index * 80 })) } });
-    }
-    function addEntryBlocks() {
-      const types = ['arduino_setup', 'arduino_loop'];
-      const missing = types.filter(type => !workspace.getBlocksByType(type, false).length);
-      if (!missing.length) {
-        reveal([workspace.getBlocksByType('arduino_setup', false)[0]]);
-        return [];
-      }
-      return append({ blocks: { languageVersion: 0, blocks: missing.map((type, index) => ({ type, x: 40, y: 40 + index * 200 })) } });
     }
     function importText(text) {
       if (!String(text).trim().startsWith('<')) return append(JSON.parse(text));
@@ -150,7 +196,15 @@
     function clear() {
       const previous = Blockly.Events.getGroup();
       Blockly.Events.setGroup(previous || true);
-      try { workspace.clear(); }
+      try {
+        for (const block of workspace.getTopBlocks(false)) {
+          if (!entryTypes.includes(block.type)) block.dispose(false);
+          else {
+            const body = block.getInputTargetBlock('DO');
+            if (body) body.dispose(false);
+          }
+        }
+      }
       finally { Blockly.Events.setGroup(previous); }
       recoveryLocked = false;
       originalRecovery = null;
@@ -168,6 +222,9 @@
         options.onSaved('Could not restore saved blocks: ' + error.message + '. Stored recovery is preserved; save a backup or clear it to start over.');
       }
     }
+    ensureEntries();
+    StudioXArduinoLibraryBlocks.observeWorkspace(workspace);
+    workspace.clearUndo();
     loading = false;
     workspace.addChangeListener(event => {
       if (event.type === Blockly.Events.SELECTED && event.newElementId) lastSelected = workspace.getBlockById(event.newElementId);
@@ -194,10 +251,11 @@
     window.addEventListener('beforeunload', saveRecovery);
     applyTheme();resize();
     return {
-      workspace, snapshot, append, addIncludes, addEntryBlocks, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
+      workspace, snapshot, append, addIncludes, importText, copy, paste, selected, clear, resize, saveRecovery, setDiagnostics, focus,
       activate: () => { workspace.markFocused(); resize(); },
       exportState: () => recoveryLocked ? originalRecovery : snapshot().state,
       recoveryLocked: () => recoveryLocked,
+      updateToolbox: toolbox => { workspace.updateToolbox(toolbox); resize(); },
       undo,
     };
   }
