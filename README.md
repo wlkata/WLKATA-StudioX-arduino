@@ -16,8 +16,10 @@ the Arduino tab lists each problem and selects its block in the Arduino canvas. 
 Upload stay unavailable until the workspace is supported. Turning off visual
 highlights does not bypass validation. Disabled blocks are omitted.
 
-This version does not implement robot commands, Python blocks, lists, Blockly
-functions, workflows, or other extensions' blocks. Arduino C++ includes and
+Selected Python Robot and Accessories blocks convert on paste/import using the
+[reviewed mapping](mappings/README.md). Uncertain commands/models stay preserved
+and highlighted. General Python blocks, lists, Blockly functions, workflows, and
+other extensions' blocks remain unsupported. Arduino C++ includes and
 native C++ blocks and generated library function blocks are available.
 
 ## Install
@@ -109,6 +111,21 @@ More → Import blocks appends JSON, XML, or legacy `.blockly` files. Clear Ardu
 workspace removes instructions while keeping Setup and Loop, and can be undone.
 It affects only this editor. If recovery needs a missing block definition,
 the original saved data is preserved until the user explicitly clears it.
+
+## Python robot blocks
+
+Paste or import a Python Blockly workspace to convert reviewed Robot and
+Accessories blocks into native WLKATA Arduino calls. Setup robot becomes a corresponding class
+variable declaration followed by init(). Transport configuration is separate.
+Robot and Accessories toolbox entries also create these native Arduino blocks
+directly when dragged. Computer/simulated ports are not used as constructor values.
+Selected commands can bind to an existing, clearly identified robot declaration.
+
+The mapping table, audited signatures, pending operations, and model limitations
+are kept in [mappings/README.md](mappings/README.md) and
+[mappings/robot-blocks.json](mappings/robot-blocks.json). Joint moves and conveyor
+moves currently remain pending because their G-code/mode semantics differ.
+Python's combined E4 / MT4 model also requires confirmation.
 
 ## Basic blocks
 
@@ -286,6 +303,8 @@ node tests/test_toolbox.js
 node tests/test_scaffold.js
 node tests/test_dropdowns.js --studiox-root ../blockly
 node tests/test_declarations.js --studiox-root ../blockly
+node tests/test_robot_mapping.js
+node tests/test_robot_mapping_blocks.js --studiox-root ../blockly
 node tests/test_object_variables.js
 node tests/test_library_blocks.js --studiox-root ../blockly
 node tests/compile_fixture.js /tmp/StudioXSubset.ino

@@ -54,6 +54,11 @@
     function filter(items) {
       return (items || []).flatMap(item => {
         if (['Python', 'Workflows'].includes(item.name) || pythonBlocks.has(item.type) || String(item.type || '').startsWith('workflow_')) return [];
+        if (['Robot','Accessories'].includes(item.name)) {
+          const category={...item,custom:item.name==='Robot' ? 'ARDUINO_ROBOT' : 'ARDUINO_ACCESSORIES'};
+          delete category.contents;
+          return [category];
+        }
         if (item.contents) {
           const contents = filter(item.contents);
           if (item.contents.length && !contents.length && !item.custom) return [];

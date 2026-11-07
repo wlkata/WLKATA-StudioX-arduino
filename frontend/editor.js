@@ -20,6 +20,12 @@
       zoom: { controls: true, wheel: true, startScale: options.scale || 1, maxScale: 3, minScale: .3, scaleSpeed: 1.2 },
     });
     host.dataset.workspaceId = workspace.id;
+    for (const [category,callback] of [['Robot','ARDUINO_ROBOT'],['Accessories','ARDUINO_ACCESSORIES']]) {
+      workspace.registerToolboxCategoryCallback(callback, () => {
+        const source=options.sourceToolbox?.contents?.find(item=>item.name===category)?.contents || [];
+        return StudioXArduinoRobotMapping.flyout(source,snapshot());
+      });
+    }
     workspace.registerButtonCallback('ARDUINO_MANAGE_LIBRARIES', () => options.onManageLibraries());
     workspace.registerButtonCallback('CREATE_VARIABLE', button => Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace()));
     if (Blockly.Variables.flyoutCategory) workspace.registerToolboxCategoryCallback('VARIABLE', ws => {
@@ -126,6 +132,9 @@
       workspace.centerOnBlock(blocks[0].id);
     }
     function paste() {
+      const packet=api.getBlockClipboard();
+      if (!packet) return [];
+      if (packet.format==='json') return append({variables:packet.variables || [],blocks:{languageVersion:0,blocks:packet.blocks}});
       const temporary = new Blockly.Workspace();
       try {
         api.pasteBlockClipboard(temporary);
@@ -133,7 +142,8 @@
       } finally { temporary.dispose(); }
     }
     function append(source) {
-      const state = source && (source.state || source.workspace) || source;
+      const incoming = source && (source.state || source.workspace) || source;
+      const state = StudioXArduinoRobotMapping.transform(incoming,snapshot()).state;
       validateDefinitions(state);
       const prepared = StudioXArduinoScaffold.split(state);
       const previous = Blockly.Events.getGroup();
@@ -214,8 +224,9 @@
     originalRecovery = api.getData('arduino', 'workspace');
     if (originalRecovery) {
       try {
-        validateDefinitions(originalRecovery);
-        Blockly.serialization.workspaces.load(originalRecovery, workspace);
+        const restored=StudioXArduinoRobotMapping.transform(originalRecovery).state;
+        validateDefinitions(restored);
+        Blockly.serialization.workspaces.load(restored, workspace);
         workspace.clearUndo();
       } catch (error) {
         recoveryLocked = true;

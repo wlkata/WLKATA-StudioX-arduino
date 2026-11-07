@@ -1,0 +1,738 @@
+{
+  "schemaVersion": 1,
+  "library": {
+    "name": "WLKATA",
+    "version": "3.0.7",
+    "source": "Reviewed Downloads/WLKATA headers, implementations, and examples; StudioX Python block generators and installed wlkatapython implementations."
+  },
+  "models": {
+    "Mirobot_UART": {
+      "header": "Mirobot.h",
+      "axes": [
+        "X",
+        "Y",
+        "Z",
+        "A",
+        "B",
+        "C"
+      ],
+      "headerSha256": "35dbe06dc2ccc9156538f7d096347cb49162c7acf91d5ffd9262c8d006eb31d4",
+      "functions": [
+        {
+          "id": "11a2b5faf2f8411d3531",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "Mirobot_UART",
+          "qualifiedName": "Mirobot_UART",
+          "owner": "Mirobot_UART",
+          "constructor": true,
+          "static": false,
+          "parameters": [
+            {
+              "name": "p",
+              "type": "RS485AssicMaster *",
+              "kind": "cpp",
+              "optional": true,
+              "default": "&RS485"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART(RS485AssicMaster * p = &RS485)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "f742335f6c570577e797",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "init",
+          "qualifiedName": "Mirobot_UART::init",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "addr",
+              "type": "int",
+              "kind": "number",
+              "optional": true,
+              "default": "-1"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::init(int addr = -1)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "ae17a5585bdc7fbab68a",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "sendMsg",
+          "qualifiedName": "Mirobot_UART::sendMsg",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "str",
+              "type": "String",
+              "kind": "text",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "askEn",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": true,
+              "default": "ON"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::sendMsg(String str, bool askEn = ON)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "310b079c32007e0e9557",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "waitIdle",
+          "qualifiedName": "Mirobot_UART::waitIdle",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::waitIdle()",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "745d3e595d2293de1559",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "homing",
+          "qualifiedName": "Mirobot_UART::homing",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "homingMode",
+              "type": "int",
+              "kind": "number",
+              "optional": true,
+              "default": "-1"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::homing(int homingMode = -1)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "be9511552ce900f038a5",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "zero",
+          "qualifiedName": "Mirobot_UART::zero",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::zero()",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "38544b962b38ae4473d4",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "movePose",
+          "qualifiedName": "Mirobot_UART::movePose",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "pathMode",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "motionMode",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "z",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "a",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "b",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "c",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::movePose(uint8_t pathMode, bool motionMode, float x, float y, float z, float a, float b, float c)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "48dda140d2a4d6afd269",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "setMotionSpeed",
+          "qualifiedName": "Mirobot_UART::setMotionSpeed",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "speed",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::setMotionSpeed(float speed)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "771f8b522163773d22eb",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "setEndtGripper",
+          "qualifiedName": "Mirobot_UART::setEndtGripper",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "num",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::setEndtGripper(uint8_t num)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "98737aec2df353108d46",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "setEndtPump",
+          "qualifiedName": "Mirobot_UART::setEndtPump",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "num",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::setEndtPump(uint8_t num)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        }
+      ]
+    },
+    "E4_UART": {
+      "header": "E4.h",
+      "axes": [
+        "X",
+        "Y",
+        "Z",
+        "A"
+      ],
+      "headerSha256": "ca094741f8819401595be00ef52c1b6a3835aab3e602c8df79bcfc730501ba29",
+      "functions": [
+        {
+          "id": "0506874c1562231d5264",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "E4_UART",
+          "qualifiedName": "E4_UART",
+          "owner": "E4_UART",
+          "constructor": true,
+          "static": false,
+          "parameters": [
+            {
+              "name": "p",
+              "type": "RS485AssicMaster *",
+              "kind": "cpp",
+              "optional": true,
+              "default": "&RS485"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART(RS485AssicMaster * p = &RS485)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "676c1b09c8c7b2111992",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "init",
+          "qualifiedName": "E4_UART::init",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "addr",
+              "type": "int",
+              "kind": "number",
+              "optional": true,
+              "default": "-1"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::init(int addr = -1)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "2642b11e0d40050c0e89",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "sendMsg",
+          "qualifiedName": "E4_UART::sendMsg",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "str",
+              "type": "String",
+              "kind": "text",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "askEn",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": true,
+              "default": "ON"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::sendMsg(String str, bool askEn = ON)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "fe85bae369723aaadd66",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "waitIdle",
+          "qualifiedName": "E4_UART::waitIdle",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::waitIdle()",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "db2921ab11b92a01fd1b",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "homing",
+          "qualifiedName": "E4_UART::homing",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "homingMode",
+              "type": "int",
+              "kind": "number",
+              "optional": true,
+              "default": "-1"
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::homing(int homingMode = -1)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "44b6dac0697e9ff4cbd2",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "zero",
+          "qualifiedName": "E4_UART::zero",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::zero()",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "dfa6009bdb59cca51883",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "movePose",
+          "qualifiedName": "E4_UART::movePose",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "pathMode",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "motionMode",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "x",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "y",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "z",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "a",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::movePose(uint8_t pathMode, bool motionMode, float x, float y, float z, float a)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "18078450eec3308dde07",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "setMotionSpeed",
+          "qualifiedName": "E4_UART::setMotionSpeed",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "speed",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::setMotionSpeed(float speed)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "81a30c5ed2d8c85766af",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "setEndtGripper",
+          "qualifiedName": "E4_UART::setEndtGripper",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "num",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::setEndtGripper(uint8_t num)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
+          "id": "58af17326e8b309179e3",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "setEndtPump",
+          "qualifiedName": "E4_UART::setEndtPump",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "num",
+              "type": "uint8_t",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::setEndtPump(uint8_t num)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        }
+      ]
+    }
+  },
+  "unmappedModels": {
+    "MT4_UART": "Python labels this E4 / MT4, while the downloaded Arduino MT4.cpp disagrees with MT4.h. Confirm E4_UART versus MT4_UART before mapping.",
+    "Harobot_UART": "No corresponding class in the supplied library.",
+    "Miromax_UART": "No corresponding class in the supplied library."
+  },
+  "rules": {
+    "setup_robot": {
+      "target": "variables_set + arduino_class + arduino_instance_call",
+      "function": "class declaration + init",
+      "status": "mapped",
+      "note": "Declare the corresponding robot class and call init(). Transport configuration stays separate; computer/simulated ports are not reused."
+    },
+    "robot_homing": {
+      "function": "homing + waitIdle",
+      "status": "mapped",
+      "note": "Includes both calls; preserves the Python homing block wait."
+    },
+    "robot_zero": {
+      "function": "zero",
+      "status": "mapped"
+    },
+    "robot_speed": {
+      "function": "setMotionSpeed",
+      "status": "mapped",
+      "note": "Python emits F, matching setMotionSpeed; motionSpeedRatio emits H and is not equivalent."
+    },
+    "write_coordinate": {
+      "function": "movePose",
+      "status": "mapped",
+      "note": "Preserves all model axes. MOTION 0/1/2 map to MOVEP/MOVEL/JUMP (G00/G01/G05); not MOVEJ, which is 1 in this library."
+    },
+    "write_angle": {
+      "function": "moveJoints",
+      "status": "pending",
+      "note": "Python writeAngle emits G00; Arduino moveJoints emits G01. Preserve the original block until confirmed."
+    },
+    "robot_wait_idle": {
+      "function": "waitIdle",
+      "status": "mapped"
+    },
+    "robot_send_msg": {
+      "function": "sendMsg",
+      "status": "mapped",
+      "note": "Append CRLF like Python. Set askEn false to keep the send-only behavior."
+    },
+    "robot_delay": {
+      "function": "delay",
+      "status": "mapped",
+      "note": "Convert seconds to milliseconds."
+    },
+    "robot_pump": {
+      "function": "setEndtPump",
+      "status": "mapped",
+      "note": "Preserve mode 0/1/2 -> PWM 0/1000/500."
+    },
+    "robot_gripper": {
+      "function": "setEndtGripper",
+      "status": "mapped",
+      "note": "Preserve mode 0/1/2 -> PWM 0/40/60; block labels and SDK docstrings differ, so mapping follows actual commands."
+    },
+    "robot_three_finger": {
+      "function": "setEndtPump",
+      "status": "mapped",
+      "note": "Python generator calls pump, not gripper."
+    },
+    "robot_conveyor": {
+      "function": "moveExjDist",
+      "status": "pending",
+      "note": "Arduino always uses M21/G00 and scales distance by exj_ratio; Python preserves G00/G01. Units/mode need confirmation."
+    },
+    "robot_homing_wait": {
+      "function": "parent homing wait",
+      "status": "legacy",
+      "note": "The obsolete decorative child has no Python generator output; it is not converted independently."
+    }
+  }
+}

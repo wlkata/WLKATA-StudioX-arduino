@@ -35,10 +35,14 @@ app.whenReady().then(async () => {
   async function bootstrap() {
     const manifest = require(path.join(repo, 'extension.json'));
     await run(`registerExtensionBlocks(${JSON.stringify(manifest)}, ${JSON.stringify(url(repo))}, ${JSON.stringify(manifest.contributes.blocks)})`);
-    await run(`window.ws=Blockly.inject('blocklyDiv',{toolbox:{kind:'categoryToolbox',contents:[
+    await run(`window.findEnclosingProcedure=()=>null;window.getAllLocalScopeNames=()=>new Set();
+      initSetupRobotBlock();initMoveRobotBlocks();initRobotCommandBlocks();
+      window.ws=Blockly.inject('blocklyDiv',{toolbox:{kind:'categoryToolbox',contents:[
       {kind:'category',name:'Logic',contents:[{kind:'block',type:'controls_if'}]},
       {kind:'category',name:'Variables',custom:'VARIABLE'},
       {kind:'category',name:'Functions',custom:'PROCEDURE'},
+      {kind:'category',name:'Robot',contents:['setup_robot','robot_homing','robot_zero','robot_speed','write_coordinate','write_angle','robot_wait_idle','robot_send_msg','robot_delay'].map(type=>({kind:'block',type}))},
+      {kind:'category',name:'Accessories',contents:['robot_pump','robot_gripper','robot_three_finger','robot_conveyor'].map(type=>({kind:'block',type}))},
       {kind:'category',name:'Python',contents:[]},{kind:'category',name:'Workflows',contents:[]},...extensionBlockCategories()]},sounds:false});
       Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(${JSON.stringify(fs.readFileSync(path.join(repo,'examples/Blink.xml'),'utf8'))}),ws);
       window.showTab=which=>{
@@ -96,6 +100,8 @@ app.whenReady().then(async () => {
       <script src="${url(path.join(host,'js/extensions/workspaceBridge.js'))}"></script>
       <script src="${url(path.join(host,'js/extensions/workspaceTransfer.js'))}"></script>
       <script src="${url(path.join(host,'js/extensions/extensionBlocks.js'))}"></script>
+      <script src="${url(path.join(host,'js/blocks/setupRobot.js'))}"></script>
+      <script src="${url(path.join(host,'js/blocks/moveRobot.js'))}"></script>
       <script src="${url(path.join(host,'js/workspace/blockSelection.js'))}"></script>
       </body></html>`);
     await win.loadFile(html);await bootstrap();
@@ -107,7 +113,7 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     assert.match(await run("document.getElementById('arduino-code').value"),/void setup\(\).*void loop\(/s);
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
-    assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),4);
+    assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),6);
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
     assert.strictEqual(await run("ws.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),true);
     await run("document.getElementById('arduino-import-main').click()");
@@ -305,12 +311,77 @@ app.whenReady().then(async () => {
     await wait('az.getAllBlocks(false).length>0');
     assert.strictEqual(await run("az.getBlocksByType('arduino_delay',false)[0].getInputTargetBlock('MS').getFieldValue('NUM')"),707,'Arduino recovery is independent of main');
     assert.strictEqual(await run("ws.getBlockById('blink_ms').getFieldValue('NUM')"),500);
+    // Whole-workspace transfer converts Python robot blocks before loading.
+    await run(`document.getElementById('arduino-clear-blocks').click();ws.clear();
+      const n=value=>({shadow:{type:'math_number',fields:{NUM:value}}});
+      const axes=Object.fromEntries(['X','Y','Z','A','B','C'].map((axis,index)=>['AXIS_'+axis,n(index+1)]));
+      const pump={type:'robot_pump',id:'pythonPump',fields:{VARIABLE:'robot',MODE:'1'},next:{block:{type:'robot_delay',inputs:{TIME:n(1.5)}}}};
+      const pose={type:'write_coordinate',fields:{VARIABLE:'robot',MOTION:'2',POSITION:'1'},inputs:axes,next:{block:pump}};
+      const home={type:'robot_homing',fields:{VARIABLE:'robot'},next:{block:pose}};
+      const source={type:'setup_robot',fields:{VARIABLE:{id:'pyRobot',name:'robot',type:''},MODEL:'Mirobot_UART',PORT:'VirtualMirobot'},next:{block:home}};
+      Blockly.serialization.blocks.append(source,ws);
+      window.robotSourceBefore=JSON.stringify(Blockly.serialization.workspaces.save(ws));
+      document.getElementById('arduino-import-main').click();void 0;`);
+    await wait("az.getBlocksByType('arduino_class',false).length===1");
+    assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===robotSourceBefore'),true);
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.init()')");
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.init\(\);/);
+    assert.strictEqual(await run("document.getElementById('arduino-code').value.includes('sx_bus_')"),false);
+    assert.match(await run("document.getElementById('arduino-code').value"),/Mirobot_UART v_robot/);
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.homing()')");
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.homing\(\);\n\s*v_robot.waitIdle\(\)/);
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.movePose\(\(uint8_t\)\(2\)/);
+    assert.strictEqual(await run("az.getAllBlocks(false).some(block=>['setup_robot','robot_homing','write_coordinate','robot_pump','robot_delay'].includes(block.type))"),false);
+    // JSON clipboard: paste a selected command into an already-declared robot.
+    const beforeRobotPaste=await run('az.getAllBlocks(false).length');
+    await run("ExtensionAPI.copyBlockToClipboard(ws.getBlockById('pythonPump'));document.getElementById('arduino-paste-blocks').click()");
+    await wait('az.getAllBlocks(false).length>'+beforeRobotPaste);
+    assert.strictEqual(await run("az.getBlocksByType('robot_pump',false).length"),0);
+    await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
+    // XML clipboard follows the same mapping and remains one undo action.
+    await run("ExtensionAPI.publishBlockClipboard([Blockly.Xml.domToText(Blockly.Xml.blockToDom(ws.getBlockById('pythonPump'),true))]);document.getElementById('arduino-paste-blocks').click()");
+    await wait('az.getAllBlocks(false).length>'+beforeRobotPaste);
+    assert.strictEqual(await run("az.getBlocksByType('robot_pump',false).length"),0);
+    await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
+    // Uncertain joint moves remain visible and block compiling with a reason.
+    await run(`const block=ws.newBlock('write_angle');block.initSvg();block.render();
+      ExtensionAPI.copyBlockToClipboard(block);document.getElementById('arduino-paste-blocks').click();void 0;`);
+    await wait("az.getBlocksByType('write_angle',false).length===1");
+    await wait("document.getElementById('arduino-problems').textContent.includes('G00')");
+    assert.strictEqual(await run("document.getElementById('arduino-compile').disabled"),true);
+    await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
+    // Use the flyout's native block creation path, as toolbox dragging does.
+    await run(`document.getElementById('arduino-clear-blocks').click();
+      var robotCategory=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Robot');az.getToolbox().setSelectedItem(robotCategory);void 0;`);
+    await wait("az.getFlyout().getWorkspace().getBlocksByType('variables_set',false).length===1");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getAllBlocks(false).some(block=>['setup_robot','robot_homing','robot_speed','write_coordinate','write_angle'].includes(block.type))"),false);
+    await run(`var flyoutOriginal=az.getFlyout().getWorkspace().getBlocksByType('variables_set',false)[0];
+      window.draggedSetup=az.getFlyout().createBlock(flyoutOriginal);void 0;`);
+    await wait("az.getBlocksByType('arduino_class',false).length===1");
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.init()')");
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.init\(\);/);
+    await run(`var flyoutOriginal=az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).find(block=>block.librarySpec_.name==='homing');
+      az.getFlyout().createBlock(flyoutOriginal);void 0;`);
+    await wait("az.getBlocksByType('arduino_instance_call',false).length===3");
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.homing()')");
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.homing\(\);\n\s*v_robot.waitIdle\(\)/);
+    await run(`var accessoriesCategory=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Accessories');az.getToolbox().setSelectedItem(accessoriesCategory);void 0;`);
+    await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).length===3");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getAllBlocks(false).some(block=>['robot_pump','robot_gripper','robot_three_finger','robot_conveyor'].includes(block.type))"),false);
+    await run("az.getFlyout().createBlock(az.getFlyout().getWorkspace().getTopBlocks(false)[0]);void 0");
+    await wait("az.getBlocksByType('arduino_instance_call',false).length===4");
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.setEndtPump')");
+    assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.setEndtPump/);
     await run("document.documentElement.dataset.theme='dark';new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
     await win.webContents.capturePage().then(image=>fs.writeFileSync('/private/tmp/studiox-arduino-independent.png',image.toPNG()));
     assert.deepStrictEqual(errors,[]);
-    console.log('Arduino integration passed: permanent Setup/Loop, nested library function blocks, independent editor, board/library managers, local folder/ZIP pickers and cancellation, automatic compile/upload, build reuse, layout/port reuse, stale-code protection, failed/cancelled compilation, package invalidation, clipboard, undo, and recovery.');
-  } catch(error) { console.error(error);
-    try { console.error(await run(`JSON.stringify({errors:null,flyout:az.getFlyout().getWorkspace().getAllBlocks(false).map(b=>b.type),categories:az.getToolbox().getToolboxItems().map(i=>({name:i.getName(),visible:i.isVisible&&i.isVisible()})),copyDebug:window.copyDebug,message:document.getElementById('arduino-build-status').textContent, main:ws.getTopBlocks(false).map(b=>b.type), arduino:az.getTopBlocks(false).map(b=>b.type), clipboard:ExtensionAPI.getBlockClipboard(), pasteDisabled:document.getElementById('arduino-paste-blocks').disabled,redoDisabled:document.getElementById('arduino-redo').disabled,undo:az.getUndoStack().map(e=>e.type),redo:az.getRedoStack().map(e=>e.type)})`)); } catch(_) {}
+    console.log('Arduino integration passed: permanent Setup/Loop, nested library function blocks, native Robot/Accessories toolbox creation, plain setup, Python robot mapping on import and JSON/XML clipboard, independent editor, board/library managers, local folder/ZIP pickers and cancellation, automatic compile/upload, build reuse, layout/port reuse, stale-code protection, failed/cancelled compilation, package invalidation, clipboard, undo, and recovery.');
+  } catch(error) { console.error(error);console.error('Renderer errors:',errors);
+    try { console.error(await run(`JSON.stringify({errors:null,flyoutOptions:az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).map(b=>({signature:b.librarySpec_?.name,field:b.getFieldValue('FUNC_NAME'),disposed:b.isDisposed()})),flyout:az.getFlyout().getWorkspace().getAllBlocks(false).map(b=>b.type),categories:az.getToolbox().getToolboxItems().map(i=>({name:i.getName(),visible:i.isVisible&&i.isVisible()})),copyDebug:window.copyDebug,message:document.getElementById('arduino-build-status').textContent, main:ws.getTopBlocks(false).map(b=>b.type), arduino:az.getTopBlocks(false).map(b=>b.type), clipboard:ExtensionAPI.getBlockClipboard(), pasteDisabled:document.getElementById('arduino-paste-blocks').disabled,redoDisabled:document.getElementById('arduino-redo').disabled,undo:az.getUndoStack().map(e=>e.type),redo:az.getRedoStack().map(e=>e.type)})`)); } catch(_) {}
     process.exitCode=1; }
   finally { win.destroy();fs.rmSync(temp,{recursive:true,force:true});app.exit(process.exitCode||0); }
 });

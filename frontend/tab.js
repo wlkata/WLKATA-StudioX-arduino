@@ -249,8 +249,8 @@
     if (!api || !api.getWorkspaceSnapshot || !api.getWorkspaceToolbox || !api.appendWorkspaceSnapshot || !api.pasteBlockClipboard) {
       message('This extension needs a StudioX version with independent-workspace transfer APIs.'); return;
     }
-    for (const asset of ['compiler', 'scaffold', 'toolbox', 'editor', 'managers']) {
-      const name = { compiler: 'StudioXArduinoCompiler', scaffold: 'StudioXArduinoScaffold', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
+    for (const asset of ['compiler', 'robotMapping', 'scaffold', 'toolbox', 'editor', 'managers']) {
+      const name = { robotMapping: 'StudioXArduinoRobotMapping', compiler: 'StudioXArduinoCompiler', scaffold: 'StudioXArduinoScaffold', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
       if (window[name]) continue;
       await new Promise((resolve, reject) => {
         const script = document.createElement('script'); script.src = new URL(asset + '.js', assetBase).href;
@@ -258,10 +258,13 @@
         document.body.appendChild(script);
       });
     }
+    const mappingResponse=await fetch(new URL('../mappings/robot-blocks.json',assetBase).href);
+    if (!mappingResponse.ok) throw new Error('Could not load the Python-to-Arduino robot mapping.');
+    window.StudioXArduinoRobotMapping.configure(await mappingResponse.json());
     baseToolbox = await api.getWorkspaceToolbox();
     const toolbox = window.StudioXArduinoToolbox.build(baseToolbox);
     editor = window.StudioXArduinoEditor.create(get('blockly'), {
-      api, toolbox,
+      api, toolbox, sourceToolbox: baseToolbox,
       onManageLibraries: () => managers.openLibraries(),
       scale: window.AppPreferences && AppPreferences.getBlockScale ? AppPreferences.getBlockScale() : 1,
       isActive: () => api.isActive('arduino'),

@@ -201,7 +201,9 @@
     }
     for (const { block, parent } of nodes) {
       if (!expressions.has(block.type) && !statements.has(block.type)) {
-        error(block, 'Unsupported Arduino block: ' + block.type + '. Robot, Python, lists, and Blockly functions are not supported in this version.');
+        let issue;
+        try { issue=JSON.parse(block.data || '{}').studioxArduinoMapping?.issue; } catch (_) {}
+        error(block,issue ? 'Not mapped: ' + block.type + '. ' + issue : 'Unsupported Arduino block: ' + block.type + '. This block has no Arduino mapping.');
       }
       if ((block.type === 'arduino_setup' || block.type === 'arduino_loop') && parent) {
         error(block, 'Place Arduino setup and loop blocks at the top level.');

@@ -207,9 +207,10 @@
       const previous = block.librarySpec_;
       block.libraryOptions_ = options;
       const selected = options.findIndex(spec => previous && optionKey(spec,0) === optionKey(previous,0));
-      const index = selected >= 0 ? selected : Math.max(0,options.findIndex(spec=>spec.supported !== false));
+      const sameMethod = selected >= 0 ? selected : options.findIndex(spec=>previous && spec.name===previous.name);
+      const index = sameMethod >= 0 ? sameMethod : Math.max(0,options.findIndex(spec=>spec.supported !== false));
       block.librarySpec_ = options[index] || null;
-      if (selected < 0) {
+      if (sameMethod < 0) {
         block.libraryOptional_ = false;
         block.libraryStatement_ = block.librarySpec_?.returnKind === 'void';
       }
