@@ -1,6 +1,29 @@
 /* Reuse general categories; Arduino owns its target-specific block organization. */
 (function (root) {
   const cppTypes = root.StudioXArduinoCppTypes || require('./cppTypes');
+  // Follow BlockFactory's order for equivalents; keep additional blocks last.
+  const categoryOrder = ['Loops', 'Math', 'Logic', 'Text', 'Lists', 'Variables', 'Functions', 'Robot', 'Accessories'];
+  const blockOrder = {
+    Loops: ['controls_whileUntil', 'controls_for', 'controls_flow_statements'],
+    Math: ['math_number', 'math_arithmetic', 'math_modulo', 'math_trig', 'math_single', 'math_round', 'math_random_int', 'math_random_float', 'math_constrain'],
+    Logic: ['logic_compare', 'logic_operation', 'logic_negate', 'logic_boolean', 'logic_ternary'],
+    Text: ['text', 'text_join', 'text_indexOf', 'text_getSubstring', 'text_changeCase', 'text_trim', 'text_length', 'text_charAt'],
+    Lists: ['lists_create_with', 'lists_length', 'lists_getIndex', 'lists_setIndex'],
+    Robot: ['setup_robot', 'robot_wait_idle', 'robot_send_msg', 'robot_homing', 'robot_zero', 'write_coordinate', 'write_angle', 'robot_speed'],
+    Accessories: ['robot_gripper', 'robot_pump', 'robot_three_finger', 'robot_conveyor'],
+  };
+  function ordered(items, names, key) {
+    const rank = new Map(names.map((name, index) => [name, index]));
+    return items.slice().sort((a, b) => (rank.get(key(a)) ?? names.length) - (rank.get(key(b)) ?? names.length));
+  }
+  function orderBlocks(category, contents) {
+    const names = blockOrder[category];
+    if (!names) return contents.slice();
+    const blocks = ordered(contents.filter(item => item.kind === 'block'), names, item => item.type);
+    let index = 0;
+    // Labels, buttons and existing separators keep their positions.
+    return contents.map(item => item.kind === 'block' ? blocks[index++] : item);
+  }
   function build(source, catalog = { libraries: [] }) {
     const toolbox = JSON.parse(JSON.stringify(source));
     const number = value => ({ shadow: { type: 'math_number', fields: { NUM: value } } });
@@ -61,7 +84,7 @@
           return [category];
         }
         if (item.contents) {
-          const contents = filter(item.contents);
+          const contents = orderBlocks(item.name, filter(item.contents));
           if (item.contents.length && !contents.length && !item.custom) return [];
           if (item.name === 'Text') contents.unshift({kind:'label',text:'Escapes: \\t tab, \\n newline, \\\\ backslash'});
           return [{ ...item, contents }];
@@ -69,19 +92,23 @@
         return [item];
       });
     }
-    toolbox.contents = filter(toolbox.contents).filter(item => item.name !== 'Arduino');
-    toolbox.contents.push(group('Arduino', [
+    toolbox.contents = ordered(filter(toolbox.contents).filter(item => item.name !== 'Arduino'), categoryOrder, item => item.name);
+    if (toolbox.contents.length) toolbox.contents.push({kind: 'sep'});
+    toolbox.contents.push(
       group('I/O', [
-        block('arduino_pin'), block('arduino_builtin_led'), block('arduino_high_low'),
-        block('arduino_pin_mode', { PIN: pin('13') }, { MODE: 'OUTPUT' }),
-        block('arduino_digital_write', { PIN: pin('13') }, { LEVEL: 'HIGH' }),
+        block('arduino_high_low'),
         block('arduino_digital_write_value', { PIN: pin('13'), STATE: { shadow: { type: 'arduino_high_low', fields: { LEVEL: 'HIGH' } } } }),
+        block('arduino_digital_write', { PIN: pin('13') }, { LEVEL: 'HIGH' }),
         block('arduino_digital_read', { PIN: pin('2') }),
-        block('arduino_analog_read', { PIN: pin('A0') }),
         block('arduino_analog_write', { PIN: pin('9'), VALUE: number(128) }),
+        block('arduino_analog_read', { PIN: pin('A0') }),
+        block('arduino_pin_mode', { PIN: pin('13') }, { MODE: 'OUTPUT' }),
+        block('arduino_pin'), block('arduino_builtin_led'),
         block('arduino_tone', { PIN: pin('8'), FREQUENCY: number(440), DURATION: number(1000) }),
         block('arduino_no_tone', { PIN: pin('8') }),
       ]),
+      group('Timing', [block('arduino_delay', { MS: number(1000) }), block('arduino_millis')]),
+      group('Serial', [block('arduino_serial_begin'), block('arduino_serial_print', { VALUE: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } })]),
       group('Libraries / C++', [
         group('Manage libraries', [{kind:'button',text:'Install / manage libraries…',callbackkey:'ARDUINO_MANAGE_LIBRARIES'}]),
         ...(catalog.error ? [group('Library browser status', [{kind:'label',text:catalog.error}])] : []),
@@ -90,11 +117,9 @@
           group(header.name, headerContents(header))))),
         group('Advanced C++', [block('arduino_include'), block('arduino_cpp_declaration'), block('arduino_cpp_statement'), block('arduino_cpp_expression')]),
       ]),
-      group('Timing', [block('arduino_delay', { MS: number(1000) }), block('arduino_millis')]),
-      group('Serial', [block('arduino_serial_begin'), block('arduino_serial_print', { VALUE: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } })]),
-    ]));
+    );
     return toolbox;
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports = { build };
-  root.StudioXArduinoToolbox = { build };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { build, orderBlocks };
+  root.StudioXArduinoToolbox = { build, orderBlocks };
 })(typeof window !== 'undefined' ? window : globalThis);

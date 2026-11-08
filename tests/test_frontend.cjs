@@ -128,7 +128,11 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     assert.match(await run("document.getElementById('arduino-code').value"),/void setup\(\).*void loop\(/s);
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
-    assert.strictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).length"),6);
+    assert.deepStrictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).map(item=>item.getName ? item.getName() : 'separator')"),['Logic','Variables','Functions','Robot','Accessories','separator','I/O','Timing','Serial','Libraries / C++']);
+    assert.strictEqual(await run("document.querySelector('#arduino-blockly .blocklyTreeSeparator')!==null"),true);
+    await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='I/O'))");
+    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===11");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type)"),['arduino_high_low','arduino_digital_write_value','arduino_digital_write','arduino_digital_read','arduino_analog_write','arduino_analog_read','arduino_pin_mode','arduino_pin','arduino_builtin_led','arduino_tone','arduino_no_tone']);
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
     assert.strictEqual(await run("ws.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),true);
     await run("document.getElementById('arduino-import-main').click()");
@@ -247,7 +251,7 @@ app.whenReady().then(async () => {
     assert.strictEqual(await run("document.getElementById('arduino-upload').disabled"),false);
     assert.match(await run("document.getElementById('arduino-upload').title"),/Compile this program/,'package changes require compilation on the next upload');
     await wait("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Servo.h')");
-    assert.deepStrictEqual(await run("(()=>{let item=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Servo.h');const names=[];while(item){names.unshift(item.getName());item=item.getParent();}return names;})()"),['Arduino','Libraries / C++','Servo','Servo.h']);
+    assert.deepStrictEqual(await run("(()=>{let item=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Servo.h');const names=[];while(item){names.unshift(item.getName());item=item.getParent();}return names;})()"),['Libraries / C++','Servo','Servo.h']);
     await run("(()=>{const item=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Servo.h');for(let parent=item.getParent();parent;parent=parent.getParent())parent.setExpanded(true);az.getToolbox().setSelectedItem(item);})();void 0");
     await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_class',false).length===1");
     assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_class',false)[0].getField('FUNC_NAME').getOptions(false).length"),1);
@@ -379,6 +383,7 @@ app.whenReady().then(async () => {
     await run(`document.getElementById('arduino-clear-blocks').click();
       var robotCategory=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Robot');az.getToolbox().setSelectedItem(robotCategory);void 0;`);
     await wait("az.getFlyout().getWorkspace().getBlocksByType('variables_set',false).length===1");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type==='arduino_instance_call' ? block.librarySpec_.name : block.type)"),['variables_set','waitIdle','sendMsg','homing','zero','movePose','moveJoints','setMotionSpeed','arduino_delay']);
     assert.strictEqual(await run("az.getFlyout().getWorkspace().getAllBlocks(false).some(block=>['setup_robot','robot_homing','robot_speed','write_coordinate','write_angle'].includes(block.type))"),false);
     await run(`var flyoutOriginal=az.getFlyout().getWorkspace().getBlocksByType('variables_set',false)[0];
       window.draggedSetup=az.getFlyout().createBlock(flyoutOriginal);void 0;`);
@@ -399,8 +404,9 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     await run(`var accessoriesCategory=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Accessories');az.getToolbox().setSelectedItem(accessoriesCategory);void 0;`);
     await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).length===3");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.librarySpec_.name)"),['setEndtGripper','setEndtPump','setEndtPump']);
     assert.strictEqual(await run("az.getFlyout().getWorkspace().getAllBlocks(false).some(block=>['robot_pump','robot_gripper','robot_three_finger','robot_conveyor'].includes(block.type))"),false);
-    await run("az.getFlyout().createBlock(az.getFlyout().getWorkspace().getTopBlocks(false)[0]);void 0");
+    await run("az.getFlyout().createBlock(az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).find(block=>block.librarySpec_.name==='setEndtPump'));void 0");
     await wait("az.getBlocksByType('arduino_instance_call',false).length===5");
     await wait("!document.getElementById('arduino-compile').disabled");
     await wait("document.getElementById('arduino-code').value.includes('v_robot.setEndtPump')");

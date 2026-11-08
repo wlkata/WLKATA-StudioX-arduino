@@ -156,7 +156,10 @@ Boolean values can be compared using C++ scalar promotions, so `int8_t != 0` and
 `boolean != 0` are valid comparisons. Other input sockets remain typed. Saved
 blocks recompute these categories when loaded, and refreshed headers replace
 saved signatures from the same library without mixing classes with equal names.
-The Arduino toolbox groups I/O, Libraries / C++, Timing, and Serial blocks. I/O blocks
+The toolbox follows BlockFactory's category/block order for existing equivalents.
+A horizontal divider separates shared Blockly categories from the top-level
+I/O, Timing, Serial, and Libraries / C++ categories. Additional blocks keep their
+relative order after the equivalents, and library/header nesting stays intact. I/O blocks
 include named pins (`13`, `A0`), digital HIGH/LOW values, condition-driven digital
 writes, and buzzer tone/stop-tone controls, alongside pin mode, digital reads and
 writes, analog reads, and PWM. Value inputs have editable defaults. Pin labels,

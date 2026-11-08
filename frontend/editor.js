@@ -23,7 +23,7 @@
     for (const [category,callback] of [['Robot','ARDUINO_ROBOT'],['Accessories','ARDUINO_ACCESSORIES']]) {
       workspace.registerToolboxCategoryCallback(callback, () => {
         const source=options.sourceToolbox?.contents?.find(item=>item.name===category)?.contents || [];
-        return StudioXArduinoRobotMapping.flyout(source,snapshot());
+        return StudioXArduinoRobotMapping.flyout(StudioXArduinoToolbox.orderBlocks(category,source),snapshot());
       });
     }
     workspace.registerButtonCallback('ARDUINO_MANAGE_LIBRARIES', () => options.onManageLibraries());

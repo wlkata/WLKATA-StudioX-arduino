@@ -39,6 +39,7 @@
 .arduino-canvas-panel { min-width: 0; min-height: 0; position: relative; border: 1px solid var(--border-primary); border-radius: 7px; overflow: hidden; }
 #arduino-blockly { position: absolute; inset: 0; }
 #arduino-blockly .blocklyToolbox { background: var(--bg-secondary) !important; color: var(--text-primary) !important; }
+#arduino-blockly .blocklyTreeSeparator { border-bottom: 1px solid var(--border-primary); margin: 8px 6px; }
 #arduino-blockly .blocklyMainBackground { fill: var(--bg-primary) !important; }
 #arduino-blockly .arduino-unsupported > .blocklyPath { stroke: #e53935 !important; stroke-width: 2.5px !important; stroke-dasharray: 6 3; }
 .arduino-side-panel { display: flex; flex-direction: column; border: 1px solid var(--border-primary); border-radius: 7px; min-height: 0; min-width: 0; overflow: hidden; }
