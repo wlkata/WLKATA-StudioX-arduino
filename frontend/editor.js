@@ -30,7 +30,7 @@
     workspace.registerButtonCallback('CREATE_VARIABLE', button => Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace()));
     if (Blockly.Variables.flyoutCategory) workspace.registerToolboxCategoryCallback('VARIABLE', ws => {
       const blocks = Blockly.Variables.flyoutCategory(ws);
-      for (const type of ['arduino_type','arduino_instance_call']) {
+      for (const type of ['arduino_type','arduino_address_of','arduino_instance_call']) {
         const block = Blockly.utils.xml.createElement('block'); block.setAttribute('type',type); blocks.push(block);
       }
       return blocks;

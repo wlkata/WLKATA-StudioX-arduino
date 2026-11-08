@@ -5,7 +5,7 @@
   const expressions = new Set([
     'math_number', 'math_arithmetic', 'math_single', 'math_round', 'math_modulo', 'math_constant',
     'logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'logic_ternary',
-    'variables_get', 'text', 'text_join', 'text_length', 'text_isEmpty',
+    'variables_get', 'arduino_address_of', 'text', 'text_join', 'text_length', 'text_isEmpty',
     'arduino_digital_read', 'arduino_analog_read', 'arduino_millis', 'arduino_builtin_led', 'arduino_pin', 'arduino_high_low', 'arduino_cpp_expression', 'arduino_type', 'arduino_class', 'arduino_instance_call', 'arduino_library_value', 'arduino_library_object_ref', 'arduino_library_constant',
   ]);
   const statements = new Set([
@@ -136,7 +136,12 @@
       }
       return variables.get(id);
     }
-    for (const { block } of nodes) if (['variables_get', 'variables_set', 'math_change', 'text_append', 'controls_for'].includes(block.type)) {
+    function addressObject(block) {
+      const saved = field(block, 'VAR', null);
+      return libraryObjects.get(saved && typeof saved === 'object' ? saved.id : saved);
+    }
+    for (const { block } of nodes) if (['variables_get', 'variables_set', 'arduino_address_of', 'math_change', 'text_append', 'controls_for'].includes(block.type)) {
+      if (block.type === 'arduino_address_of' && addressObject(block)) continue;
       const entry = variable(block); if (block.type === 'variables_set') entry.hasSet = true;
     }
     function declarationInfo(block) {
@@ -167,7 +172,7 @@
     function infer(block) {
       if (!block || disabled(block)) return null;
       if (block.type === 'variables_get') return variable(block).type;
-      if (block.type === 'arduino_library_object_ref') return 'cpp';
+      if (['arduino_library_object_ref', 'arduino_address_of'].includes(block.type)) return 'cpp';
       if (block.type === 'arduino_type') return declarationInfo(block)?.type;
       if (block.type === 'arduino_class') return declarationInfo(block)?.type;
       if (['arduino_library_value','arduino_instance_call'].includes(block.type)) {
@@ -282,6 +287,12 @@
         }
         case 'logic_boolean': return boolean(field(block, 'BOOL', 'TRUE') === 'TRUE' ? 'true' : 'false');
         case 'variables_get': { const value = variable(block); return { code: value.cpp, type: value.type }; }
+        case 'arduino_address_of': {
+          const object = addressObject(block);
+          if (object) return {code: '&' + object.cpp, type: 'cpp', cppType: object.spec.owner + ' *'};
+          const value = variable(block);
+          return {code: '&' + value.cpp, type: 'cpp', cppType: (value.declaration?.nativeType || cppType(value.type)) + ' *'};
+        }
         case 'text': return text('String(' + cppString(field(block, 'TEXT', '')) + ')');
         case 'math_arithmetic': {
           const a = n('A'), c = n('B');
@@ -520,7 +531,7 @@
     function staticArgument(block) {
       if (!block) return;
       const allowed = block.type === 'text' || block.type.startsWith('math_') || block.type.startsWith('logic_') ||
-        ['arduino_library_constant','arduino_cpp_expression','arduino_builtin_led','arduino_pin','arduino_high_low'].includes(block.type);
+        ['arduino_library_constant','arduino_cpp_expression','arduino_address_of','arduino_builtin_led','arduino_pin','arduino_high_low'].includes(block.type);
       if (!allowed) error(block, 'Class declaration arguments must be constant values or C++ expressions available before Setup.');
       Object.keys(block.inputs || {}).forEach(name => staticArgument(child(block,name)));
     }

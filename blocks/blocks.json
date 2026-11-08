@@ -530,5 +530,20 @@
       }
     ],
     "tooltip": "Connect to set variable to declare its C++ type once. The variable is global and starts at zero, false, or empty text."
+  },
+  {
+    "type": "arduino_address_of",
+    "message0": "address of %1",
+    "args0": [
+      {
+        "type": "field_variable",
+        "name": "VAR",
+        "variable": "item"
+      }
+    ],
+    "output": "ArduinoPointer",
+    "colour": "#00979D",
+    "tooltip": "Returns &variable for a C++ pointer parameter. Declare the variable with the matching type, such as uint16_t for color-sensor output values.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
   }
 ]

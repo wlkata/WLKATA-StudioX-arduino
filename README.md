@@ -211,6 +211,19 @@ The Variables category also has a type value for primitive declarations, such as
 set pin to type int, which produces `int v_pin = 0;`. Set boolean and text variables
 to type bool and String. Later ordinary set blocks assign values to these variables.
 
+Variables → **address of** returns a pointer to the selected variable. For example,
+declare `red`, `green`, `blue`, and `clear` with type `uint16_t`, then connect their
+address blocks to the four `getRGBC` inputs. This generates
+`v_sensor.getRGBC(&v_red, &v_green, &v_blue, &v_clear);`. The declaration must match
+the library's pointer type; an ordinary inferred number uses `double`, whose
+address cannot be passed as `uint16_t *`. Arduino's compiler checks the pointer
+types. Addresses follow variable renames and survive files and clipboard copies.
+
+The generated `v_` prefix separates Blockly variables from C++ keywords and
+Arduino/library names such as `setup`, `loop`, `Serial`, and `Wire`. The visible
+variable remains `red`; its generated identifier is `v_red`, so its address is
+`&v_red`. Address blocks resolve that identifier automatically.
+
 Use Variables → call variable method, select the declared servo variable, then
 choose attach for Setup or write for Loop. The menu contains that variable's
 class methods. Parameter inputs follow the selected method/overload. Renaming
@@ -306,6 +319,7 @@ After the initial code is pushed, this repository can be added to the StudioX
 ```sh
 node tests/test_compiler.js
 node tests/test_cpp_types.js --studiox-root ../blockly
+node tests/test_address_of.js --studiox-root ../blockly
 node tests/test_toolbox.js
 node tests/test_scaffold.js
 node tests/test_dropdowns.js --studiox-root ../blockly
