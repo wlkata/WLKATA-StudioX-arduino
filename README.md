@@ -149,6 +149,12 @@ from an explicit class declaration connected to the standard set variable block.
 Numbers use Arduino `double` (on classic AVR boards this has float precision),
 booleans use `bool`, and text uses Arduino `String`. Python's arbitrary-size
 integers and dynamic type changes are not emulated. Text is encoded as UTF-8.
+Library call and parameter checks derive their categories from the declared C++
+types, including fixed-width integers and Arduino's `boolean` alias. Numeric and
+Boolean values can be compared using C++ scalar promotions, so `int8_t != 0` and
+`boolean != 0` are valid comparisons. Other input sockets remain typed. Saved
+blocks recompute these categories when loaded, and refreshed headers replace
+saved signatures from the same library without mixing classes with equal names.
 The Arduino toolbox groups I/O, Libraries / C++, Timing, and Serial blocks. I/O blocks
 include named pins (`13`, `A0`), digital HIGH/LOW values, condition-driven digital
 writes, and buzzer tone/stop-tone controls, alongside pin mode, digital reads and
@@ -299,6 +305,7 @@ After the initial code is pushed, this repository can be added to the StudioX
 
 ```sh
 node tests/test_compiler.js
+node tests/test_cpp_types.js --studiox-root ../blockly
 node tests/test_toolbox.js
 node tests/test_scaffold.js
 node tests/test_dropdowns.js --studiox-root ../blockly

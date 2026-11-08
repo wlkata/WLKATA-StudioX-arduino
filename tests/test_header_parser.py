@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest import mock
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
-from header_parser import parse_header
+from header_parser import parse_header, value_kind
 from arduino_manager import ArduinoManager
 
 HEADER = '''
@@ -33,6 +33,25 @@ enum class Mode { OFF, ON };
 
 
 class HeaderParserTests(unittest.TestCase):
+    def test_declared_cpp_return_types_and_arduino_aliases(self):
+        result = parse_header('''class ColorSensor { public:
+          int8_t begin(void);
+          boolean ready(void);
+          void enable(boolean enabled);
+          const uint16_t count();
+          int8_t *buffer();
+        };''', 'ColorSensor.h', 'ColorSensor')
+        methods = {item['name']: item for item in result['functions']}
+        self.assertEqual(methods['begin']['returnType'], 'int8_t')
+        self.assertEqual(methods['begin']['returnKind'], 'number')
+        self.assertEqual(methods['ready']['returnKind'], 'boolean')
+        self.assertEqual(methods['enable']['parameters'][0]['kind'], 'boolean')
+        self.assertEqual(methods['count']['returnKind'], 'number')
+        self.assertEqual(methods['buffer']['returnKind'], 'cpp')
+        for cpp_type in ['int8_t', 'uint8_t', 'int64_t', 'unsigned', 'std::uint16_t', 'const size_t']:
+            with self.subTest(cpp_type=cpp_type):
+                self.assertEqual(value_kind(cpp_type), 'number')
+
     def test_public_methods_overloads_namespaces_parameters_and_instances(self):
         result=parse_header(HEADER,'Meter.h','Devices')
         self.assertFalse(result['parseErrors'])

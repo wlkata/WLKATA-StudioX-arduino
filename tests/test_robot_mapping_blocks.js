@@ -2,7 +2,7 @@ const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require(
 const root=path.resolve(__dirname,'..'),arg=process.argv.indexOf('--studiox-root'),host=arg<0?path.resolve(root,'../blockly'):process.argv[arg+1];
 const Blockly=require(path.join(host,'node_modules/blockly'));require(path.join(host,'node_modules/blockly/blocks'));
 Blockly.defineBlocksWithJsonArray(JSON.parse(fs.readFileSync(path.join(root,'blocks/blocks.json'))));
-const context={Blockly};vm.runInNewContext(fs.readFileSync(path.join(root,'frontend/libraryBlocks.js'),'utf8'),context);
+const context={Blockly,StudioXArduinoCppTypes:require('../frontend/cppTypes')};vm.runInNewContext(fs.readFileSync(path.join(root,'frontend/libraryBlocks.js'),'utf8'),context);
 const mapping=require('../frontend/robotMapping');mapping.configure(JSON.parse(fs.readFileSync(path.join(root,'mappings/robot-blocks.json'))));const {compile}=require('../frontend/compiler');
 const original={variables:[{id:'arm',name:'robot',type:''}],blocks:{languageVersion:0,blocks:[{type:'setup_robot',id:'setup',fields:{VARIABLE:{id:'arm'},MODEL:'Mirobot_UART',PORT:'COM9'},next:{block:{type:'robot_homing',id:'home',fields:{VARIABLE:'robot'},next:{block:{type:'robot_pump',id:'pump',fields:{VARIABLE:'robot',MODE:'1'}}}}}}]}};
 const result=mapping.transform(original);

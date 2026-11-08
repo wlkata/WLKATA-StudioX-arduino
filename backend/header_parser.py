@@ -17,11 +17,11 @@ def value_kind(cpp_type):
     text = re.sub(r'\s+', ' ', text).strip()
     if text == 'void':
         return 'void'
-    if text == 'bool':
+    if text in ('bool', 'boolean'):
         return 'boolean'
     if text in ('String', 'std::string') or re.fullmatch(r'char\s*\*', text) and 'const' in cpp_type:
         return 'text'
-    if re.fullmatch(r'(?:(?:unsigned|signed|long|short)\s+)*(?:int|char|double|float|long|short)|u?int\d+_t|size_t|ssize_t|byte|word', text):
+    if re.fullmatch(r'(?:(?:unsigned|signed|long|short)\s+)*(?:int|char|double|float|long|short)|(?:std::)?(?:u?int\d+_t|size_t|ssize_t|ptrdiff_t|intptr_t|uintptr_t)|unsigned|signed|byte|word', text):
         return 'number'
     return 'cpp'
 

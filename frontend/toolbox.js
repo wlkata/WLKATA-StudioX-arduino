@@ -1,5 +1,6 @@
 /* Reuse general categories; Arduino owns its target-specific block organization. */
 (function (root) {
+  const cppTypes = root.StudioXArduinoCppTypes || require('./cppTypes');
   function build(source, catalog = { libraries: [] }) {
     const toolbox = JSON.parse(JSON.stringify(source));
     const number = value => ({ shadow: { type: 'math_number', fields: { NUM: value } } });
@@ -38,7 +39,7 @@
         entry.disabled = false;
         contents.push(entry);
       }
-      const functions = header.functions || [];
+      const functions = (header.functions || []).map(cppTypes.signature);
       combined('arduino_class', functions.filter(spec => spec.constructor === true));
       const classes = contents.find(item => item.type === 'arduino_class');
       if (classes) classes.extraState.methods = functions.filter(spec => spec.owner && !spec.static && spec.constructor !== true);

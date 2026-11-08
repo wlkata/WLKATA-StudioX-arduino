@@ -1,5 +1,9 @@
 /* Loaded before workspace restoration so dynamic calls survive files and clipboard. */
 (function (root) {
+  // This definition script loads before workspace restoration. StudioX runs it
+  // in Electron; resolve the shared helper relative to the extension asset.
+  const cppTypes = root.StudioXArduinoCppTypes || require(require('url').fileURLToPath(new URL('cppTypes.js', document.currentScript.src)));
+  root.StudioXArduinoCppTypes = cppTypes;
   const clone = value => value ? JSON.parse(JSON.stringify(value)) : null;
   const check = kind => ({ number: 'Number', boolean: 'Boolean', text: 'String' }[kind] || null);
   const types = ['arduino_class', 'arduino_instance_call', 'arduino_library_call', 'arduino_library_value', 'arduino_library_object', 'arduino_library_object_ref', 'arduino_library_constant'];
@@ -150,9 +154,9 @@
       loadExtraState: function (state) {
         this.libraryLoading_ = true;
         try {
-          const saved = clone(state && state.signature);
-          this.libraryMethods_ = clone(state && state.methods) || [];
-          this.libraryOptions_ = clone(state && state.options) || (saved ? [saved] : []);
+          const saved = cppTypes.signature(clone(state && state.signature));
+          this.libraryMethods_ = (clone(state && state.methods) || []).map(cppTypes.signature);
+          this.libraryOptions_ = (clone(state && state.options) || (saved ? [saved] : [])).map(cppTypes.signature);
           let index = saved ? this.libraryOptions_.findIndex(item => JSON.stringify(item) === JSON.stringify(saved)) : 0;
           if (index < 0) { this.libraryOptions_.push(saved); index=this.libraryOptions_.length-1; }
           this.librarySpec_ = this.libraryOptions_[index] || null;
@@ -181,16 +185,16 @@
       let parent = setter.getParent(), active = true;
       while (parent) { if (!parent.isEnabled()) active = false; parent = parent.getParent(); }
       const value = setter.getInputTargetBlock('VALUE');
-      if (active && value && value.isEnabled() && isClass(value) && value.librarySpec_) return {owner:value.librarySpec_.owner, methods:value.libraryMethods_ || []};
+      if (active && value && value.isEnabled() && isClass(value) && value.librarySpec_) return {owner:value.librarySpec_.owner, library:value.librarySpec_.library, methods:value.libraryMethods_ || []};
       if (active && value && value.isEnabled()) return {owner:'',methods:[]};
     }
     for (const object of workspace.getBlocksByType('arduino_library_object', false)) {
-      if (object.isEnabled() && object.getFieldValue('VAR') === id && object.librarySpec_) return {owner:object.librarySpec_.owner,methods:object.libraryMethods_ || []};
+      if (object.isEnabled() && object.getFieldValue('VAR') === id && object.librarySpec_) return {owner:object.librarySpec_.owner,library:object.librarySpec_.library,methods:object.libraryMethods_ || []};
     }
     const model = workspace.getVariableMap().getVariableById(id);
     const catalog = catalogs.get(workspace) || [];
     const global = model && catalog.find(spec => (spec.instances || []).some(instance => instance.name === model.getName()));
-    return global ? {owner:global.owner,methods:[]} : null;
+    return global ? {owner:global.owner,library:global.library,methods:[]} : null;
   }
   function refreshInstance(block, id = block.getFieldValue('VAR')) {
     if (block.libraryLoading_ || block.isDisposed()) return;
@@ -199,15 +203,16 @@
     // or disabled. The compiler reports it; restoring the declaration restores
     // its menu without discarding the chosen method or argument blocks.
     if (!declared) return;
-    const methods = declared ? [...declared.methods, ...(catalogs.get(block.workspace) || []), ...block.libraryOptions_]
-      .filter(spec => spec.owner === declared.owner && spec.constructor !== true && !spec.static) : [];
-    const options = [...new Map(methods.map(spec => [optionKey(spec,0),spec])).values()];
+    const methods = [...declared.methods, ...block.libraryOptions_, ...(catalogs.get(block.workspace) || [])]
+      .filter(spec => spec.owner === declared.owner && (!declared.library || spec.library === declared.library) && spec.constructor !== true && !spec.static);
+    const options = [...new Map(methods.map(spec => [cppTypes.functionKey(spec),cppTypes.signature(spec)])).values()];
     if (JSON.stringify(options) === JSON.stringify(block.libraryOptions_)) return;
     recordShape(block, () => {
       const previous = block.librarySpec_;
       block.libraryOptions_ = options;
       const selected = options.findIndex(spec => previous && optionKey(spec,0) === optionKey(previous,0));
-      const sameMethod = selected >= 0 ? selected : options.findIndex(spec=>previous && spec.name===previous.name);
+      const sameSignature = options.findIndex(spec => previous && cppTypes.functionKey(spec) === cppTypes.functionKey(previous));
+      const sameMethod = selected >= 0 ? selected : sameSignature >= 0 ? sameSignature : options.findIndex(spec=>previous && spec.name===previous.name);
       const index = sameMethod >= 0 ? sameMethod : Math.max(0,options.findIndex(spec=>spec.supported !== false));
       block.librarySpec_ = options[index] || null;
       if (sameMethod < 0) {
@@ -227,6 +232,7 @@
     workspace.getBlocksByType('arduino_instance_call', false).forEach(block => refreshInstance(block));
   }
   function observeWorkspace(workspace) {
+    cppTypes.configureWorkspace(workspace);
     const listener = event => {
       if (event.isUiEvent) return;
       const previous = Blockly.Events.getGroup();
@@ -238,7 +244,7 @@
   }
   function setCatalog(workspace,catalog) {
     if (catalog.error) return;
-    const functions = (catalog.libraries || []).flatMap(library => library.headers.flatMap(header => header.functions || []));
+    const functions = (catalog.libraries || []).flatMap(library => library.headers.flatMap(header => header.functions || [])).map(cppTypes.signature);
     catalogs.set(workspace,functions);
     refreshMethods(workspace);
   }

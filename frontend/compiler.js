@@ -1,6 +1,7 @@
 /* Blockly JSON -> a conservative Arduino C++ subset. No workspace mutation. */
 (function (root) {
   'use strict';
+  const cppTypes = root.StudioXArduinoCppTypes || require('./cppTypes');
   const expressions = new Set([
     'math_number', 'math_arithmetic', 'math_single', 'math_round', 'math_modulo', 'math_constant',
     'logic_boolean', 'logic_compare', 'logic_operation', 'logic_negate', 'logic_ternary',
@@ -70,7 +71,7 @@
     const cppName = value => typeof value === 'string' && /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*$/.test(value);
     function signature(block) {
       if (signatures.has(block)) return signatures.get(block);
-      const spec = block.extraState && block.extraState.signature;
+      const spec = cppTypes.signature(block.extraState && block.extraState.signature);
       if (!spec || !cppName(spec.qualifiedName) || spec.owner && !cppName(spec.owner) || !Array.isArray(spec.parameters || []) || (spec.parameters || []).length > 16) {
         error(block, 'Choose this library block again from the library/header toolbox. Its signature is missing or invalid.');
         return null;
@@ -311,7 +312,7 @@
         }
         case 'logic_compare': {
           const a = exprInput(block, 'A'), c = exprInput(block, 'B');
-          if (a.type !== c.type) error(block, 'Compare values of the same type.');
+          if (!cppTypes.comparable(a.type, c.type)) error(block, 'Cannot compare ' + (a.cppType || a.type) + ' with ' + (c.cppType || c.type) + '.');
           const op = { EQ: '==', NEQ: '!=', LT: '<', LTE: '<=', GT: '>', GTE: '>=' }[field(block, 'OP')];
           if (!op) error(block, 'Unsupported comparison.');
           return boolean('(' + a.code + ' ' + (op || '==') + ' ' + c.code + ')');
@@ -354,7 +355,7 @@
           if (spec.returnKind === 'void') error(block, 'This library function does not return a value.');
           let code = libraryCall(block);
           if (spec.returnKind === 'text') code = spec.returnType.includes('std::string') ? 'String((' + code + ').c_str())' : 'String(' + code + ')';
-          return { code, type: spec.returnKind || 'cpp' };
+          return { code, type: spec.returnKind || 'cpp', cppType: spec.returnType };
         }
         case 'arduino_library_object_ref': {
           const spec = signature(block);

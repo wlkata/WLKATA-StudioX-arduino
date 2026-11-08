@@ -2,7 +2,7 @@ const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require(
 const root=path.resolve(__dirname,'..');const index=process.argv.indexOf('--studiox-root');
 const host=index<0?path.resolve(root,'../blockly'):process.argv[index+1];
 const Blockly=require(path.join(host,'node_modules/blockly'));require(path.join(host,'node_modules/blockly/blocks'));
-vm.runInNewContext(fs.readFileSync(path.join(root,'frontend/libraryBlocks.js'),'utf8'),{Blockly});
+vm.runInNewContext(fs.readFileSync(path.join(root,'frontend/libraryBlocks.js'),'utf8'),{Blockly,StudioXArduinoCppTypes:require('../frontend/cppTypes')});
 const {compile}=require('../frontend/compiler');
 const ctor={id:'ctor',owner:'Servo',qualifiedName:'Servo',name:'Servo',constructor:true,parameters:[],returnKind:'void',header:'Servo.h',library:'Servo',supported:true};
 const write={...ctor,id:'write',constructor:false,name:'write',qualifiedName:'Servo::write',parameters:[{name:'angle',type:'int',kind:'number'}],returnType:'void'};
