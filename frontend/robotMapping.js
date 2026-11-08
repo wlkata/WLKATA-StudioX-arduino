@@ -116,10 +116,11 @@
               extraState:{signature,options:Object.values(config.models).flatMap(model=>model.functions.filter(f=>f.constructor===true)),
                 methods:Object.values(config.models).flatMap(model=>model.functions.filter(f=>f.constructor!==true))}}}},
               next:{block:originalType==='arduino_robot_setup' && block.inputs?.ADDRESS ? apiCall(context,'init',[block.inputs.ADDRESS],true) : apiCall(context,'init')}};
-          } else if (originalType==='write_coordinate') {
+          } else if (originalType==='write_coordinate' || originalType==='write_angle') {
             const keys=context.model.axes;
             if (keys.some(key=>!block.inputs?.['AXIS_'+key] || !(block.inputs['AXIS_'+key].block || block.inputs['AXIS_'+key].shadow)) || Object.keys(block.inputs || {}).some(key=>key.startsWith('AXIS_')&&!keys.includes(key.slice(5)))) throw new Error('Axis inputs do not match the robot class; no axes were discarded or filled in.');
-            replacement=apiCall(context,'movePose',[number(code(block,'MOTION',['0','1','2'])),boolean(code(block,'POSITION',['0','1'])===1),...keys.map(key=>block.inputs['AXIS_'+key])]);
+            const args=[boolean(code(block,'POSITION',['0','1'])===1),...keys.map(key=>block.inputs['AXIS_'+key])];
+            replacement=originalType==='write_angle' ? apiCall(context,'moveJoints',args) : apiCall(context,'movePose',[number(code(block,'MOTION',['0','1','2'])),...args]);
           } else if (originalType==='robot_homing') {
             const wait=block.inputs?.WAIT?.block;
             if (wait && (wait.type!=='robot_homing_wait' || wait.next)) throw new Error('Custom legacy homing WAIT contents need review.');
@@ -180,10 +181,10 @@
     return (entries || []).map(entry=>{
       const rule=config.rules[entry.type];
       if (!rule) return clone(entry);
-      if (rule.status!=='mapped') return {kind:'label',text:entry.type==='write_angle' ? 'Write angle: mapping pending' : entry.type==='robot_conveyor' ? 'Conveyor: mapping pending' : 'Mapping pending: '+entry.type};
+      if (rule.status!=='mapped') return {kind:'label',text:entry.type==='robot_conveyor' ? 'Conveyor: mapping pending' : 'Mapping pending: '+entry.type};
       const block={type:entry.type,fields:{VARIABLE:robot.name,MODEL:robot.owner,MODE:'1',MOTION:'0',POSITION:'0',...(entry.fields || {})},inputs:clone(entry.inputs || {})};
       if (entry.type==='setup_robot') block.fields.VARIABLE={id:'arduino-map:'+robot.name,name:robot.name,type:''};
-      if (entry.type==='write_coordinate') block.inputs=Object.fromEntries(model.axes.map(axis=>['AXIS_'+axis,number(0)]));
+      if (entry.type==='write_coordinate' || entry.type==='write_angle') block.inputs=Object.fromEntries(model.axes.map(axis=>['AXIS_'+axis,number(0)]));
       // A template supplies only fresh defaults; the live destination still
       // determines whether the declared variable exists when compiling.
       const setup={type:'setup_robot',fields:{VARIABLE:{id:'arduino-map:'+robot.name,name:robot.name,type:''},MODEL:robot.owner}};

@@ -123,8 +123,9 @@ Selected commands can bind to an existing, clearly identified robot declaration.
 
 The mapping table, audited signatures, pending operations, and model limitations
 are kept in [mappings/README.md](mappings/README.md) and
-[mappings/robot-blocks.json](mappings/robot-blocks.json). Joint moves and conveyor
-moves currently remain pending because their G-code/mode semantics differ.
+[mappings/robot-blocks.json](mappings/robot-blocks.json). Joint moves use Arduino's
+`moveJoints()` behavior (G01), including when copied from Python Blockly.
+Conveyor moves remain pending because their G-code/mode semantics differ.
 Python's combined E4 / MT4 model also requires confirmation.
 
 ## Basic blocks

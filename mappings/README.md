@@ -37,7 +37,7 @@ The Robot and Accessories toolbox categories use the same mapping to create
 native Arduino blocks directly when dragged onto the canvas. They use an
 existing declared robot as the initial variable when available; otherwise the
 templates use Mirobot/robot until the user declares or selects their variable.
-Pending joint/conveyor mappings are labels in the flyout rather than draggable
+Pending conveyor mappings are labels in the flyout rather than draggable
 unsupported Python blocks. Paste/import still retains pending source blocks
 with a diagnostic for review.
 
@@ -56,7 +56,7 @@ lacks several advertised arm methods. Harobot_UART and Miromax_UART are absent.
 | Zero (`robot_zero`) | `zero` | mapped | Direct method mapping. |
 | Speed (`robot_speed`) | `setMotionSpeed` | mapped | Python emits F, matching setMotionSpeed; motionSpeedRatio emits H and is not equivalent. |
 | Write coordinate (`write_coordinate`) | `movePose` | mapped | Preserves all model axes. MOTION 0/1/2 map to MOVEP/MOVEL/JUMP (G00/G01/G05); not MOVEJ, which is 1 in this library. |
-| Write angle (`write_angle`) | `moveJoints` | pending | Python writeAngle emits G00; Arduino moveJoints emits G01. Preserve the original block until confirmed. |
+| Write angle (`write_angle`) | `moveJoints` | mapped | Use Arduino's native G01 joint-motion behavior; preserve absolute/incremental mode and every model joint value. |
 | Wait until idle (`robot_wait_idle`) | `waitIdle` | mapped | Direct method mapping. |
 | Send message (`robot_send_msg`) | `sendMsg` | mapped | Append CRLF like Python. Set askEn false to keep the send-only behavior. |
 | Delay (`robot_delay`) | `delay` | mapped | Convert seconds to milliseconds. |
@@ -71,6 +71,12 @@ gripper docstring conflicts with the block labels; both implementations send
 PWM 0/40/60, so conversion does not reinterpret open/close. Three-finger blocks
 call Python pump and therefore map to setEndtPump. Cartesian mode 2 means
 G05, which is JUMP (2) in this library, despite MOVEJ being defined as 1.
+
+Joint-angle blocks deliberately use the Arduino library's `moveJoints()`
+implementation (G01), including when pasted from Python's G00-based writeAngle
+block. The position mode and joint values are retained. The same conversion
+creates Robot toolbox entries for six-joint Mirobot or explicitly declared
+four-joint E4 variables. Missing or extra axes still require correction.
 
 Send message appends CRLF because Python sendMsg appends it and Arduino sendMsg
 does not. askEn is false for this send-only block; motion APIs keep the target

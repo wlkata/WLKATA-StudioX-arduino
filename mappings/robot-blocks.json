@@ -255,6 +255,76 @@
           "instances": []
         },
         {
+          "id": "c22005a453937f881587",
+          "library": "WLKATA",
+          "header": "Mirobot.h",
+          "name": "moveJoints",
+          "qualifiedName": "Mirobot_UART::moveJoints",
+          "owner": "Mirobot_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "motionMode",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j1",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j2",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j3",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j4",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j5",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j6",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "Mirobot_UART::moveJoints(bool motionMode, float j1, float j2, float j3, float j4, float j5, float j6)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _MIROBOT_H"
+          ],
+          "instances": []
+        },
+        {
           "id": "48dda140d2a4d6afd269",
           "library": "WLKATA",
           "header": "Mirobot.h",
@@ -573,6 +643,62 @@
           "instances": []
         },
         {
+          "id": "22876b18c16bccfa3f29",
+          "library": "WLKATA",
+          "header": "E4.h",
+          "name": "moveJoints",
+          "qualifiedName": "E4_UART::moveJoints",
+          "owner": "E4_UART",
+          "constructor": false,
+          "static": false,
+          "parameters": [
+            {
+              "name": "motionMode",
+              "type": "bool",
+              "kind": "boolean",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j1",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j2",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j3",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            },
+            {
+              "name": "j4",
+              "type": "float",
+              "kind": "number",
+              "optional": false,
+              "default": ""
+            }
+          ],
+          "returnType": "void",
+          "returnKind": "void",
+          "label": "E4_UART::moveJoints(bool motionMode, float j1, float j2, float j3, float j4)",
+          "supported": true,
+          "reason": "",
+          "conditions": [
+            "#ifndef _E4_H"
+          ],
+          "instances": []
+        },
+        {
           "id": "18078450eec3308dde07",
           "library": "WLKATA",
           "header": "E4.h",
@@ -692,8 +818,8 @@
     },
     "write_angle": {
       "function": "moveJoints",
-      "status": "pending",
-      "note": "Python writeAngle emits G00; Arduino moveJoints emits G01. Preserve the original block until confirmed."
+      "status": "mapped",
+      "note": "Use the Arduino moveJoints implementation (G01), as selected for Arduino Blockly; preserve absolute/incremental mode and all model joint values."
     },
     "robot_wait_idle": {
       "function": "waitIdle",

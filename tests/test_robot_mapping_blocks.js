@@ -23,4 +23,25 @@ assert.deepStrictEqual(workspace.getBlocksByType('arduino_instance_call').map(bl
 assert.deepStrictEqual(compile(Blockly.serialization.workspaces.save(workspace)).diagnostics,[]);
 assert.match(compile(Blockly.serialization.workspaces.save(workspace)).code,/E4_UART v_arm/);
 for(const ws of [workspace,copy,xml])ws.dispose();
+// Joint mapping survives real Blockly JSON/XML restoration and variable rename.
+for(const [model,count] of [['Mirobot_UART',6],['E4_UART',4]]) {
+ const axes=Object.fromEntries(['X','Y','Z','A','B','C'].slice(0,count).map((axis,index)=>['AXIS_'+axis,{shadow:{type:'math_number',fields:{NUM:index+1}}}]));
+ const source={variables:[{id:'joints',name:'jointRobot',type:''}],blocks:{languageVersion:0,blocks:[{type:'setup_robot',fields:{VARIABLE:{id:'joints'},MODEL:model},next:{block:{type:'write_angle',fields:{VARIABLE:'jointRobot',POSITION:'1'},inputs:axes}}}]}};
+ const ws=new Blockly.Workspace();Blockly.serialization.workspaces.load(mapping.transform(source).state,ws);context.StudioXArduinoLibraryBlocks.observeWorkspace(ws);
+ assert.strictEqual(ws.getBlocksByType('write_angle').length,0);
+ const joint=ws.getBlocksByType('arduino_instance_call').find(block=>block.saveExtraState().signature.name==='moveJoints');
+ assert.strictEqual(joint.saveExtraState().signature.owner,model);
+ assert.strictEqual(joint.inputList.filter(input=>input.name.startsWith('ARG_')).length,count+1);
+ for(const format of ['json','xml']) {
+  const restored=new Blockly.Workspace();
+  if(format==='json')Blockly.serialization.workspaces.load(Blockly.serialization.workspaces.save(ws),restored);
+  else Blockly.Xml.domToWorkspace(Blockly.Xml.workspaceToDom(ws),restored);
+  context.StudioXArduinoLibraryBlocks.observeWorkspace(restored);
+  restored.getVariableMap().renameVariable(restored.getVariableMap().getVariableById('joints'),'renamedJointRobot');
+  const result=compile(Blockly.serialization.workspaces.save(restored));assert.deepStrictEqual(result.diagnostics,[]);
+  assert.match(result.code,/v_renamedJointRobot.moveJoints\(\(bool\)\(true\)/);
+  restored.dispose();
+ }
+ ws.dispose();
+}
 console.log('Mapped Blockly blocks passed: native definitions, JSON/XML restoration, offline method menus, source port annotation, homing pair, and rename-linked code.');

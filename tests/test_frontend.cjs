@@ -359,12 +359,21 @@ app.whenReady().then(async () => {
     await wait('az.getAllBlocks(false).length>'+beforeRobotPaste);
     assert.strictEqual(await run("az.getBlocksByType('robot_pump',false).length"),0);
     await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
-    // Uncertain joint moves remain visible and block compiling with a reason.
-    await run(`const block=ws.newBlock('write_angle');block.initSvg();block.render();
-      ExtensionAPI.copyBlockToClipboard(block);document.getElementById('arduino-paste-blocks').click();void 0;`);
-    await wait("az.getBlocksByType('write_angle',false).length===1");
-    await wait("document.getElementById('arduino-problems').textContent.includes('G00')");
-    assert.strictEqual(await run("document.getElementById('arduino-compile').disabled"),true);
+    // Joint JSON and XML clipboard transfers use Arduino moveJoints behavior.
+    await run(`(function(){
+      const axes=Object.fromEntries(['X','Y','Z','A','B','C'].map((axis,index)=>['AXIS_'+axis,{shadow:{type:'math_number',fields:{NUM:index+1}}}]));
+      const block=Blockly.serialization.blocks.append({type:'write_angle',id:'pythonJoint',fields:{VARIABLE:'robot',POSITION:'1'},inputs:axes},ws);
+      window.jointSourceBefore=JSON.stringify(Blockly.serialization.workspaces.save(ws));
+      ExtensionAPI.copyBlockToClipboard(block);document.getElementById('arduino-paste-blocks').click();
+    })();void 0;`);
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.moveJoints((bool)(true), (float)(1), (float)(2), (float)(3), (float)(4), (float)(5), (float)(6))')");
+    assert.strictEqual(await run("az.getBlocksByType('write_angle',false).length"),0);
+    assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===jointSourceBefore'),true);
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
+    await run("ExtensionAPI.publishBlockClipboard([Blockly.Xml.domToText(Blockly.Xml.blockToDom(ws.getBlockById('pythonJoint'),true))]);document.getElementById('arduino-paste-blocks').click()");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.moveJoints((bool)(true), (float)(1), (float)(2), (float)(3), (float)(4), (float)(5), (float)(6))')");
+    await wait("!document.getElementById('arduino-compile').disabled");
     await run("document.getElementById('arduino-undo').click()");await wait('az.getAllBlocks(false).length==='+beforeRobotPaste);
     // Use the flyout's native block creation path, as toolbox dragging does.
     await run(`document.getElementById('arduino-clear-blocks').click();
@@ -383,11 +392,16 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     await wait("document.getElementById('arduino-code').value.includes('v_robot.homing()')");
     assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.homing\(\);\n\s*v_robot.waitIdle\(\)/);
+    await run(`var flyoutOriginal=az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).find(block=>block.librarySpec_.name==='moveJoints');
+      az.getFlyout().createBlock(flyoutOriginal);void 0;`);
+    await wait("az.getBlocksByType('arduino_instance_call',false).length===4");
+    await wait("document.getElementById('arduino-code').value.includes('v_robot.moveJoints')");
+    await wait("!document.getElementById('arduino-compile').disabled");
     await run(`var accessoriesCategory=az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Accessories');az.getToolbox().setSelectedItem(accessoriesCategory);void 0;`);
     await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_instance_call',false).length===3");
     assert.strictEqual(await run("az.getFlyout().getWorkspace().getAllBlocks(false).some(block=>['robot_pump','robot_gripper','robot_three_finger','robot_conveyor'].includes(block.type))"),false);
     await run("az.getFlyout().createBlock(az.getFlyout().getWorkspace().getTopBlocks(false)[0]);void 0");
-    await wait("az.getBlocksByType('arduino_instance_call',false).length===4");
+    await wait("az.getBlocksByType('arduino_instance_call',false).length===5");
     await wait("!document.getElementById('arduino-compile').disabled");
     await wait("document.getElementById('arduino-code').value.includes('v_robot.setEndtPump')");
     assert.match(await run("document.getElementById('arduino-code').value"),/v_robot.setEndtPump/);

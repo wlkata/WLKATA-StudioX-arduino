@@ -46,14 +46,36 @@ const savedMixed=JSON.parse(JSON.stringify(target));savedMixed.blocks.blocks.pus
 const restoredMixed=mapping.transform(savedMixed);
 assert.strictEqual(restoredMixed.converted.length,1);assert.deepStrictEqual(restoredMixed.skipped,[]);
 assert.deepStrictEqual(compile(restoredMixed.state).diagnostics,[]);
-// Mismatched joint/path APIs and incomplete axes are preserved, never guessed.
-for(const block of [robot('write_angle',{POSITION:'0'},axes(6)),robot('robot_conveyor',{MOTION:'1',POSITION:'1'},{D:number(10)}),robot('write_coordinate',{MOTION:'0',POSITION:'0'},axes(4))]) {
+// Joint moves use the selected Arduino implementation with every model joint.
+for (const [model,count] of [['Mirobot_UART',6],['E4_UART',4]]) for (const position of ['0','1']) {
+ const joints=robot('write_angle',{POSITION:position},axes(count));
+ const snapshot=state(chain(setup('robot',model),joints)),before=JSON.stringify(snapshot);
+ const mapped=mapping.transform(snapshot),output=compile(mapped.state);
+ assert.strictEqual(JSON.stringify(snapshot),before,'joint conversion leaves the source unchanged');
+ assert.deepStrictEqual(mapped.skipped,[]);assert.deepStrictEqual(output.diagnostics,[]);
+ const call=collect(mapped.state,'arduino_instance_call').find(block=>block.extraState.signature.name==='moveJoints');
+ assert.strictEqual(call.extraState.signature.owner,model);
+ assert.strictEqual(Object.keys(call.inputs).length,count+1);
+ assert.strictEqual(call.inputs.ARG_0.shadow.fields.BOOL,position==='1' ? 'TRUE':'FALSE');
+ assert.deepStrictEqual(Array.from({length:count},(_,index)=>call.inputs['ARG_'+(index+1)].shadow.fields.NUM),Array.from({length:count},(_,index)=>index+1));
+ assert.match(output.code,new RegExp('v_robot\\.moveJoints\\(\\(bool\\)\\('+(position==='1' ? 'true':'false')+'\\), \\(float\\)\\(1\\)'));
+}
+const expressionAxes=axes(6);expressionAxes.AXIS_Y={block:{type:'math_arithmetic',fields:{OP:'MULTIPLY'},inputs:{A:number(7),B:number(3)}}};
+const expressionJoint=mapping.transform(state(chain(setup(),robot('write_angle',{POSITION:'0'},expressionAxes))));
+assert.deepStrictEqual(expressionJoint.skipped,[]);assert.deepStrictEqual(compile(expressionJoint.state).diagnostics,[]);
+assert.deepStrictEqual(collect(expressionJoint.state,'arduino_instance_call').find(block=>block.extraState.signature.name==='moveJoints').inputs.ARG_2,expressionAxes.AXIS_Y);
+// Conveyor semantics and incomplete/extra/invalid joint inputs are not guessed.
+for(const block of [robot('robot_conveyor',{MOTION:'1',POSITION:'1'},{D:number(10)}),robot('write_coordinate',{MOTION:'0',POSITION:'0'},axes(4)),robot('write_angle',{POSITION:'0'},axes(4)),robot('write_angle',{POSITION:'9'},axes(6))]) {
  const pending=mapping.transform(state(block),target);assert.strictEqual(pending.skipped.length,1);assert.strictEqual(pending.state.blocks.blocks[0].type,block.type);
 }
+const extraJoint=mapping.transform(state(chain(setup('robot','E4_UART'),robot('write_angle',{POSITION:'0'},axes(6)))));
+assert.strictEqual(extraJoint.skipped.length,1);assert.strictEqual(extraJoint.skipped[0].type,'write_angle');
 const emptyAxes=axes(6);emptyAxes.AXIS_Z={};
 const incomplete=mapping.transform(state(robot('write_coordinate',{MOTION:'0',POSITION:'0'},emptyAxes)),target);
 assert.strictEqual(incomplete.skipped.length,1,'empty axis inputs must not turn into generated zero defaults');
 assert.strictEqual(incomplete.state.blocks.blocks[0].type,'write_coordinate');
+const incompleteJoint=mapping.transform(state(robot('write_angle',{POSITION:'0'},emptyAxes)),target);
+assert.strictEqual(incompleteJoint.skipped.length,1,'empty joint input must not silently become zero');
 const emptyDelay=mapping.transform(state(source('robot_delay',{}, {TIME:{}})));
 assert.deepStrictEqual(compile(emptyDelay.state).diagnostics,[]);
 // Delays work without a robot; disabled expanded homing stays fully disabled.
@@ -72,12 +94,18 @@ const multi=mapping.transform(multiple);const multiCode=compile(multi.state);ass
 // Robot/Accessories flyouts generate native blocks using the same mapping.
 const entries=[{kind:'block',type:'setup_robot'},{kind:'block',type:'robot_homing'},{kind:'block',type:'robot_speed'},{kind:'block',type:'write_coordinate'},{kind:'block',type:'write_angle'},{kind:'block',type:'robot_pump'}];
 const flyout=mapping.flyout(entries);
-assert.deepStrictEqual(flyout.map(entry=>entry.type || entry.kind),['variables_set','arduino_instance_call','arduino_instance_call','arduino_instance_call','label','arduino_instance_call']);
+assert.deepStrictEqual(flyout.map(entry=>entry.type || entry.kind),['variables_set','arduino_instance_call','arduino_instance_call','arduino_instance_call','arduino_instance_call','arduino_instance_call']);
 assert.strictEqual(flyout[0].next.block.extraState.signature.name,'init');
 assert.strictEqual(flyout[1].next.block.extraState.signature.name,'waitIdle');
+assert.strictEqual(flyout[4].extraState.signature.name,'moveJoints');
+assert.strictEqual(Object.keys(flyout[4].inputs).length,7,'fresh Mirobot joint template has position and six angles');
 const e4Flyout=mapping.flyout([{kind:'block',type:'write_coordinate'}],e4.state);
 assert.strictEqual(e4Flyout[0].extraState.signature.owner,'E4_UART');
 assert.strictEqual(Object.keys(e4Flyout[0].inputs).length,6,'fresh E4 toolbox template has path, mode and four axes');
+const e4Joints=mapping.flyout([{kind:'block',type:'write_angle'}],e4.state)[0];
+assert.strictEqual(e4Joints.extraState.signature.owner,'E4_UART');
+assert.strictEqual(e4Joints.extraState.signature.name,'moveJoints');
+assert.strictEqual(Object.keys(e4Joints.inputs).length,5,'fresh E4 joint template has position and four angles');
 const legacy=mapping.transform(state({type:'arduino_robot_setup',fields:{VAR:{id:'robot'},MODEL:'Mirobot_UART',UART:'Serial1'}}));
 assert.strictEqual(legacy.state.blocks.blocks[0].type,'variables_set');
 assert.deepStrictEqual(compile(legacy.state).diagnostics,[]);
