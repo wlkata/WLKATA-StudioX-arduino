@@ -1,9 +1,33 @@
 """HTTP API for Arduino tooling. No physical device is opened at startup."""
+import atexit
 from flask import Blueprint, jsonify, request
 from arduino_manager import ArduinoManager
 
 blueprint = Blueprint('arduino', __name__)
 _manager = ArduinoManager()
+atexit.register(_manager.serial_monitor.disconnect)
+
+
+@blueprint.post('/serial/connect')
+def serial_connect():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.connect_monitor(data.get('port'), data.get('baudrate', 9600)))
+
+
+@blueprint.post('/serial/disconnect')
+def serial_disconnect():
+    return result(_manager.serial_monitor.disconnect)
+
+
+@blueprint.post('/serial/read')
+def serial_read():
+    data = request.get_json(silent=True) or {}
+    return result(lambda: _manager.serial_monitor.read(data.get('cursor', 0)))
+
+
+@blueprint.post('/serial/clear')
+def serial_clear():
+    return result(_manager.serial_monitor.clear)
 
 
 def result(call):

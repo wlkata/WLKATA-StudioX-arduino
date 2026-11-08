@@ -314,6 +314,25 @@ Repository: https://github.com/wlkata/WLKATA-StudioX-arduino
 After the initial code is pushed, this repository can be added to the StudioX
 `extensions.json` catalog.
 
+## Serial monitor
+
+The right panel has **Code**, **Log** (build/upload output), and **Serial** tabs.
+Choose a serial port in the toolbar, open Serial, set the baud rate to match
+`Serial.begin(...)`, and click Connect. Choose a suggested baud rate or type one
+supported by your serial tool. Changing it while connected reopens the monitor.
+The selected baud rate is remembered. Disconnect releases the port; changing the
+toolbar port also disconnects the previous monitor.
+
+Serial output streams without waiting for a newline. Text can be selected and
+copied while new data arrives. The log follows incoming data when scrolled to the
+bottom; scroll up to read earlier output. Clear empties the serial log. The latest
+200,000 characters are kept in memory, independently of the operation log.
+
+Upload releases the monitor's port first and reconnects afterward if it was
+previously connected and the selected port is unchanged. Compile alone can leave
+the monitor running. Ports are opened only by Connect or that upload reconnect.
+The monitor uses the extension's managed [Arduino CLI monitor](https://arduino.github.io/arduino-cli/1.5/commands/arduino-cli_monitor/).
+
 ## Tests
 
 ```sh

@@ -12,12 +12,13 @@
   let baseToolbox = null;
   let catalogRevision = 0;
   let catalogFingerprint = null;
+  let serialMonitor = null;
   const api = window.ExtensionAPI;
   const get = id => document.getElementById('arduino-' + id);
   const message = text => { get('build-status').textContent = text; };
-  function request(path, body) {
+  function request(path, body, extra = {}) {
     return api.fetch('arduino', path, body === undefined ? undefined : {
-      method: 'POST', body: JSON.stringify(body),
+      method: 'POST', body: JSON.stringify(body), ...extra,
     }).then(data => {
       if (!data || !data.success) throw new Error(data && data.error || 'Arduino extension is unavailable.');
       return data;
@@ -32,7 +33,7 @@
   function buttons() {
     const valid = analysis && !analysis.diagnostics.length;
     get('compile').disabled = busy || !available || !valid;
-    get('upload').disabled = busy || !available || !valid || !port();
+    get('upload').disabled = busy || !available || !valid || !port() || !!serialMonitor?.transitioning();
     get('upload').title = matchesBuild() ? 'Upload the existing build for this program and board' : 'Compile this program, then upload';
     get('install-core').disabled = busy || !available;
     get('cancel').hidden = !busy;
@@ -42,6 +43,7 @@
     get('redo').disabled = !editor || !editor.workspace.getRedoStack().length;
     get('copy-blocks').disabled = !editor || !editor.selected();
     get('paste-blocks').disabled = !editor || !api.getBlockClipboard();
+    serialMonitor?.update();
   }
   async function analyze() {
     const token = ++generation;
@@ -136,7 +138,7 @@
       const failure = results.find(result => result.status === 'rejected');
       if (failure) message('Device discovery: ' + failure.reason.message + ' Install board support if this is a new setup.');
     } catch (error) { available = false; get('tooling-status').textContent = error.message; }
-    finally { buttons(); }
+    finally { buttons(); serialMonitor?.targetChanged(); }
   }
   async function watchJob(identifier, onProgress) {
     operation = identifier;
@@ -208,13 +210,15 @@
       await analyze();
       if (!unchanged() || !matchesBuild()) throw new Error('Workspace changed. Upload again to compile your latest changes.');
       message('Uploading…');
+      await serialMonitor.pauseForUpload(destination);
       await startJob('/upload', { compileId: compiled.id, port: destination });
       await analyze();
       message(unchanged() ? 'Upload complete.' : 'Upload complete. The workspace changed during upload; upload again to include those edits.');
     } catch (error) { message(error.message); }
     finally {
-      busy = false;
       operation = null;
+      if (kind === 'upload') await serialMonitor.resumeAfterUpload();
+      busy = false;
       buttons();
       if (kind === 'core') refresh();
     }
@@ -233,10 +237,10 @@
     if (operation) await request('/jobs/' + operation + '/cancel', {});
   }
   function showOutput(tab) {
-    get('code-panel').hidden = tab !== 'code';
-    get('log-panel').hidden = tab !== 'log';
-    get('code-tab').setAttribute('aria-selected', String(tab === 'code'));
-    get('log-tab').setAttribute('aria-selected', String(tab === 'log'));
+    for (const name of ['code', 'log', 'serial']) {
+      get(name + '-panel').hidden = tab !== name;
+      get(name + '-tab').setAttribute('aria-selected', String(tab === name));
+    }
   }
   function menuAction(id, callback) {
     get(id).addEventListener('click', async () => {
@@ -249,8 +253,8 @@
     if (!api || !api.getWorkspaceSnapshot || !api.getWorkspaceToolbox || !api.appendWorkspaceSnapshot || !api.pasteBlockClipboard) {
       message('This extension needs a StudioX version with independent-workspace transfer APIs.'); return;
     }
-    for (const asset of ['compiler', 'robotMapping', 'scaffold', 'toolbox', 'editor', 'managers']) {
-      const name = { robotMapping: 'StudioXArduinoRobotMapping', compiler: 'StudioXArduinoCompiler', scaffold: 'StudioXArduinoScaffold', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers' }[asset];
+    for (const asset of ['compiler', 'robotMapping', 'scaffold', 'toolbox', 'editor', 'managers', 'serialMonitor']) {
+      const name = { robotMapping: 'StudioXArduinoRobotMapping', compiler: 'StudioXArduinoCompiler', scaffold: 'StudioXArduinoScaffold', toolbox: 'StudioXArduinoToolbox', editor: 'StudioXArduinoEditor', managers: 'StudioXArduinoManagers', serialMonitor:'StudioXArduinoSerialMonitor' }[asset];
       if (window[name]) continue;
       await new Promise((resolve, reject) => {
         const script = document.createElement('script'); script.src = new URL(asset + '.js', assetBase).href;
@@ -312,6 +316,8 @@
     menuAction('refresh-devices', refresh);
     get('code-tab').addEventListener('click', () => showOutput('code'));
     get('log-tab').addEventListener('click', () => showOutput('log'));
+    get('serial-tab').addEventListener('click', () => showOutput('serial'));
+    serialMonitor = window.StudioXArduinoSerialMonitor.create({get, request, api, getPort:port, isBusy:() => busy, onChange:buttons});
     get('compile').addEventListener('click', () => perform('compile'));
     get('upload').addEventListener('click', () => perform('upload'));
     menuAction('install-core', () => perform('core'));
@@ -337,9 +343,9 @@
       message('Board selected. Upload will compile if needed.'); buttons(); refreshLibraryCatalog();
     });
     get('port').addEventListener('change', () => {
-      get('manual-port-label').hidden = get('port').value !== 'manual'; buttons();
+      get('manual-port-label').hidden = get('port').value !== 'manual'; buttons(); serialMonitor.targetChanged();
     });
-    get('manual-port').addEventListener('input', buttons);
+    get('manual-port').addEventListener('input', () => { buttons(); serialMonitor.targetChanged(); });
     get('copy-code').addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(get('code').value); message('Arduino code copied.'); }
       catch (error) { message(error.message); }

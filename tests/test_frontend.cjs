@@ -55,8 +55,22 @@ app.whenReady().then(async () => {
       document.getElementById('arduino-tab').onclick=()=>showTab('arduino');
       initBlockSelection();showTab('arduino');
       window.calls=[];window.jobs={};window.jobCounter=0;window.holdCompile=false;window.cliAvailable=true;window.libraryInstalled=false;window.failCompile=false;
+      window.serialState={connected:false,port:'',baudrate:9600,error:''};window.serialChunks=[];window.serialCursor=0;window.serialFloor=0;window.holdSerialRead=false;
+      window.emitSerial=text=>serialChunks.push({cursor:++serialCursor,text});
+      window.serialSnapshot=cursor=>({...serialState,cursor:serialCursor,success:true,reset:cursor<serialFloor||cursor>serialCursor,text:serialChunks.filter(chunk=>chunk.cursor>(cursor<serialFloor?serialFloor:cursor)).map(chunk=>chunk.text).join('')});
       ExtensionAPI.fetch=async(name,endpoint,options)=>{
         const body=options&&options.body?JSON.parse(options.body):null;calls.push({endpoint,body});
+        if(endpoint==='/serial/read'){
+          const frame=serialSnapshot(body.cursor);
+          if(holdSerialRead){holdSerialRead=false;return new Promise(resolve=>window.releaseSerialRead=()=>resolve(frame));}
+          return frame;
+        }
+        if(endpoint==='/serial/connect'){
+          if(body.port!==serialState.port){serialChunks=[];serialFloor=++serialCursor;}
+          serialState={connected:true,port:body.port,baudrate:body.baudrate,error:''};return serialSnapshot(0);
+        }
+        if(endpoint==='/serial/disconnect'){serialState.connected=false;return serialSnapshot(0);}
+        if(endpoint==='/serial/clear'){serialChunks=[];serialFloor=++serialCursor;return serialSnapshot(0);}
         if(endpoint==='/status')return {success:true,available:cliAvailable,cliPath:'/test/arduino-cli',version:{VersionString:'test'},error:'Install Arduino CLI'};
         if(endpoint==='/libraries')return {success:true,libraries:libraryInstalled?[{name:'Servo',version:'1.3.0',installedVersion:'1.3.0',headers:['Servo.h'],architectures:['avr'],versions:['1.3.0']}]:[]};
         if(endpoint==='/libraries/search')return {success:true,total:1,libraries:[{name:'Servo',version:'1.3.0',installedVersion:libraryInstalled?'1.3.0':'',description:'Servo control',headers:libraryInstalled?['Servo.h']:[],architectures:['avr'],versions:['1.2.2','1.3.0']}]};
@@ -66,6 +80,7 @@ app.whenReady().then(async () => {
         if(endpoint==='/boards')return {success:true,boards:[{name:'Uno',fqbn:'arduino:avr:uno'},{name:'Mega',fqbn:'arduino:avr:mega:cpu=atmega2560'}]};
         if(endpoint==='/ports')return {success:true,ports:[{address:'COM9',label:'Test Arduino'}]};
         if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'||endpoint==='/boards/install'||endpoint==='/boards/refresh'||endpoint==='/libraries/install'||endpoint==='/libraries/refresh'||endpoint==='/libraries/install-local'){
+          if(endpoint==='/upload'&&serialState.connected&&serialState.port===body.port)throw Error('Serial port still owned by monitor');
           if(endpoint==='/libraries/install'||endpoint==='/libraries/install-local')libraryInstalled=true;const id='job'+(++jobCounter);jobs[id]={id,success:true,ok:true,done:endpoint!=='/compile'||!holdCompile,log:['ok']};
           if(endpoint==='/compile'&&failCompile){jobs[id].ok=false;jobs[id].done=true;jobs[id].error='Compiler failed';}
           return {success:true,jobId:id};
@@ -391,7 +406,48 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     await run("az.getVariableMap().renameVariable(az.getVariableMap().getVariableById('red'),'pink');void 0");
     await wait("document.getElementById('arduino-code').value.includes('v_pointerSensor.read(&v_pink)')");
+    await run("document.getElementById('arduino-serial-tab').click();document.getElementById('arduino-port').value='COM9';document.getElementById('arduino-port').dispatchEvent(new Event('change'))");
+    assert.strictEqual(await run("document.getElementById('arduino-serial-panel').hidden"),false);
+    assert.strictEqual(await run("calls.filter(c=>c.endpoint==='/serial/connect').length"),0,'monitor does not open a port at startup');
+    await run("document.getElementById('arduino-serial-toggle').click()");
+    await wait("document.getElementById('arduino-serial-toggle').textContent==='Disconnect' && !document.getElementById('arduino-serial-toggle').disabled");
+    await run("emitSerial('Hello sensor\\n<img src=x>');void 0");
+    await wait("document.getElementById('arduino-serial-output').textContent.includes('Hello sensor')");
+    assert.strictEqual(await run("document.getElementById('arduino-serial-output').querySelector('img')===null"),true,'serial data is displayed as text');
+    await run("var serialText=document.getElementById('arduino-serial-output').firstChild;var selectionRange=document.createRange();selectionRange.setStart(serialText,0);selectionRange.setEnd(serialText,5);getSelection().removeAllRanges();getSelection().addRange(selectionRange);emitSerial(' more data');void 0");
+    await wait("document.getElementById('arduino-serial-output').textContent.endsWith(' more data')");
+    assert.strictEqual(await run('getSelection().toString()'),'Hello','incoming text preserves selection for copying');
+    await run("document.getElementById('arduino-serial-baud').value='115200';document.getElementById('arduino-serial-baud').dispatchEvent(new Event('change'))");
+    await wait("serialState.baudrate===115200 && !document.getElementById('arduino-serial-baud').disabled");
+    assert.strictEqual(await run("ExtensionAPI.getSetting('arduino.serialBaud')"),115200);
+    const baudCalls=await run("calls.filter(c=>c.endpoint==='/serial/connect').length");
+    await run("document.getElementById('arduino-serial-baud').value='0';document.getElementById('arduino-serial-baud').dispatchEvent(new Event('change'))");
+    await wait("document.getElementById('arduino-serial-status').dataset.error==='true'");
+    assert.strictEqual(await run("calls.filter(c=>c.endpoint==='/serial/connect').length"),baudCalls,'invalid baud never opens a connection');
+    await run("document.getElementById('arduino-serial-baud').value='115200';document.getElementById('arduino-serial-baud').dispatchEvent(new Event('change'));window.holdSerialRead=true;emitSerial('STALE');void 0");
+    await wait("typeof window.releaseSerialRead==='function'");
+    await run("document.getElementById('arduino-serial-clear').click()");
+    await wait("document.getElementById('arduino-serial-output').textContent===''");
+    await run('window.releaseSerialRead()');
+    await new Promise(resolve=>setTimeout(resolve,100));
+    assert.strictEqual(await run("document.getElementById('arduino-serial-output').textContent"),'','late polling responses cannot restore cleared text');
+    await run("emitSerial('Board ready\\n');void 0");
+    await wait("document.getElementById('arduino-serial-output').textContent.includes('Board ready')");
+    const serialUploadStart=await run('calls.length');
+    await run("document.getElementById('arduino-upload').click()");
+    await wait("document.getElementById('arduino-build-status').textContent==='Upload complete.' && serialState.connected");
+    const uploadSequence=await run('calls.slice('+serialUploadStart+').map(c=>c.endpoint)');
+    assert.ok(uploadSequence.indexOf('/serial/disconnect')<uploadSequence.indexOf('/upload'));
+    assert.ok(uploadSequence.indexOf('/serial/connect')>uploadSequence.indexOf('/upload'));
+    assert.strictEqual(await run("document.getElementById('arduino-serial-output').textContent.includes('Board ready')"),true,'operation logs do not replace serial output');
+    await run("document.getElementById('arduino-port').value='manual';document.getElementById('arduino-manual-port').value='COM10';document.getElementById('arduino-port').dispatchEvent(new Event('change'))");
+    await wait("!serialState.connected && document.getElementById('arduino-serial-toggle').textContent==='Connect'");
+    await run("document.getElementById('arduino-serial-toggle').click()");
+    await wait("serialState.connected && serialState.port==='COM10' && !document.getElementById('arduino-serial-clear').disabled");
+    await run("emitSerial('R: 11  G: 22  B: 33  Clear: 44\\n');document.getElementById('arduino-serial-tab').click();void 0");
+    await wait("document.getElementById('arduino-serial-output').textContent.includes('R: 11')");
     await run("document.documentElement.dataset.theme='dark';new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+    await win.webContents.capturePage().then(image=>fs.writeFileSync('/private/tmp/studiox-arduino-serial-monitor.png',image.toPNG()));
     await win.webContents.capturePage().then(image=>fs.writeFileSync('/private/tmp/studiox-arduino-independent.png',image.toPNG()));
     assert.deepStrictEqual(errors,[]);
     console.log('Arduino integration passed: permanent Setup/Loop, nested library function blocks, native Robot/Accessories toolbox creation, plain setup, Python robot mapping on import and JSON/XML clipboard, independent editor, board/library managers, local folder/ZIP pickers and cancellation, automatic compile/upload, build reuse, layout/port reuse, stale-code protection, failed/cancelled compilation, package invalidation, clipboard, undo, and recovery.');

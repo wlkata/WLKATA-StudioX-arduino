@@ -41,9 +41,21 @@
       <div class="arduino-output-tabs" role="tablist" aria-label="Arduino output">
         <button type="button" id="arduino-code-tab" role="tab" aria-controls="arduino-code-panel" aria-selected="true">Code</button>
         <button type="button" id="arduino-log-tab" role="tab" aria-controls="arduino-log-panel" aria-selected="false">Log</button>
+        <button type="button" id="arduino-serial-tab" role="tab" aria-controls="arduino-serial-panel" aria-selected="false">Serial</button>
       </div>
       <section class="arduino-code-panel" id="arduino-code-panel" role="tabpanel" aria-labelledby="arduino-code-tab"><div class="arduino-section-heading"><strong>Arduino C++</strong><button type="button" class="arduino-button arduino-quiet" id="arduino-copy-code">Copy code</button></div><textarea id="arduino-code" readonly spellcheck="false" aria-label="Generated Arduino C++"></textarea></section>
       <section class="arduino-log-panel" id="arduino-log-panel" role="tabpanel" aria-labelledby="arduino-log-tab" hidden><div class="arduino-section-heading"><strong>Operation log</strong></div><pre id="arduino-log" tabindex="0" aria-label="Compilation and upload log">No operation has run yet.</pre></section>
+      <section class="arduino-serial-panel" id="arduino-serial-panel" role="tabpanel" aria-labelledby="arduino-serial-tab" hidden>
+        <div class="arduino-serial-controls">
+          <label>Baud rate<input id="arduino-serial-baud" type="number" min="50" max="4000000" step="1" value="9600" list="arduino-serial-rates"></label>
+          <datalist id="arduino-serial-rates"><option value="300"><option value="1200"><option value="2400"><option value="4800"><option value="9600"><option value="19200"><option value="38400"><option value="57600"><option value="74880"><option value="115200"><option value="230400"><option value="250000"><option value="460800"><option value="921600"><option value="1000000"><option value="2000000"></datalist>
+          <button type="button" id="arduino-serial-toggle" class="arduino-button">Connect</button>
+          <button type="button" id="arduino-serial-clear" class="arduino-button arduino-quiet">Clear</button>
+        </div>
+        <p class="arduino-serial-hint">Use the toolbar port and match the baud rate in Serial.begin().</p>
+        <p id="arduino-serial-status" role="status">Disconnected</p>
+        <pre id="arduino-serial-output" tabindex="0" aria-label="Serial output"></pre>
+      </section>
     </aside>
   </div>
   <dialog id="arduino-board-manager" class="arduino-manager">

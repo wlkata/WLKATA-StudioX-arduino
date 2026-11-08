@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from toolchain import installed_cli
 from local_library import validate_source, prepare_zip
 from header_parser import parse_header
+from serial_monitor import SerialMonitor
 
 FQBN = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_=,.-]+)?$')
 DEFAULT_BOARDS = [
@@ -42,6 +43,13 @@ class ArduinoManager:
         self._cli_path = ''
         self._loaded = False
         self._header_cache = {}
+        self.serial_monitor = SerialMonitor(self._args, self._terminate)
+
+    def connect_monitor(self, port, baudrate):
+        with self._lock:
+            if self._active:
+                raise RuntimeError('Wait for the active Arduino operation before connecting the serial monitor.')
+            return self.serial_monitor.connect(port, baudrate)
 
     def _load_settings(self):
         with self._lock:
@@ -432,6 +440,9 @@ class ArduinoManager:
             if not Path(output).is_dir():
                 raise ValueError('The compiled sketch has expired. Compile again.')
         def send(job):
+            # Enforced here as well as in the UI so direct API callers cannot
+            # upload while our monitor owns the destination port.
+            self.serial_monitor.disconnect(port.strip())
             self._run(job, ['upload', '--fqbn', board, '--port', port.strip(), '--input-dir', output, sketch], timeout=120)
         return self._new_job('upload', board, send, keep=(compile_id,))
 
