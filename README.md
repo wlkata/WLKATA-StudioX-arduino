@@ -335,8 +335,9 @@ After the initial code is pushed, this repository can be added to the StudioX
 
 The right panel has **Code**, **Log** (build/upload output), and **Serial** tabs.
 Choose a serial port in the toolbar, open Serial, set the baud rate to match
-`Serial.begin(...)`, and click Connect. Choose a suggested baud rate or type one
-supported by your serial tool. Changing it while connected reopens the monitor.
+`Serial.begin(...)`, and click Connect. Choose a common rate from the dropdown
+(including 9600 and 115200), or choose Custom to enter another supported rate.
+Changing it while connected reopens the monitor.
 The selected baud rate is remembered. Disconnect releases the port; changing the
 toolbar port also disconnects the previous monitor.
 

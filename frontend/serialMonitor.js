@@ -4,17 +4,26 @@
     let state = {connected:false, port:'', baudrate:9600, error:''};
     let cursor = 0, revision = 0, pending = false, polling = false, disposed = false;
     let notice = '', pollError = '', action = '', resume = null;
-    const baud = get('serial-baud'), output = get('serial-output');
+    const baud = get('serial-baud'), customBaud = get('serial-custom-baud'), output = get('serial-output');
+    let editingBaud = false;
     const text = document.createTextNode('');
     output.replaceChildren(text);
     const validBaud = value => Number.isInteger(value) && value >= 50 && value <= 4000000;
     const saved = Number(api.getSetting('arduino.serialBaud', 9600));
-    baud.value = validBaud(saved) ? saved : 9600;
+    function showBaud(rate) {
+      const preset = Array.from(baud.options).some(option => option.value === String(rate));
+      baud.value = preset ? String(rate) : 'custom';
+      customBaud.value = rate;
+      get('serial-custom-label').hidden = preset;
+    }
+    const baudValue = () => Number(baud.value === 'custom' ? customBaud.value : baud.value);
+    showBaud(validBaud(saved) ? saved : 9600);
 
     function update() {
       get('serial-toggle').textContent = state.connected ? 'Disconnect' : 'Connect';
       get('serial-toggle').disabled = pending || (!state.connected && (isBusy() || !getPort()));
       baud.disabled = pending || isBusy();
+      customBaud.disabled = pending || isBusy();
       get('serial-clear').disabled = pending;
       get('serial-status').textContent = action || notice || pollError || state.error ||
         (state.connected ? 'Connected · ' + state.port + ' · ' + state.baudrate + ' baud' :
@@ -30,7 +39,7 @@
       if (follow) output.scrollTop = output.scrollHeight;
       cursor = data.cursor;
       state = data;
-      if (state.connected && document.activeElement !== baud) baud.value = state.baudrate;
+      if (state.connected && !editingBaud && document.activeElement !== baud && document.activeElement !== customBaud) showBaud(state.baudrate);
       update();
     }
 
@@ -59,11 +68,13 @@
       finally { pending = false; action = ''; update(); onChange(); }
     }
 
-    async function connect(port = getPort(), rate = Number(baud.value)) {
+    async function connect(port = getPort(), rate = baudValue()) {
       if (!port) throw Error('Choose a serial port in the toolbar.');
       if (!validBaud(rate)) throw Error('Baud rate must be an integer from 50 to 4000000.');
       await change('Connecting…', () => request('/serial/connect', {port, baudrate:rate}));
       api.setSetting('arduino.serialBaud', rate);
+      editingBaud = false;
+      showBaud(rate);
       // A port selection may change while the connect request is in flight.
       await targetChanged();
     }
@@ -80,19 +91,26 @@
     }
     async function setBaud() {
       if (pending || isBusy()) return;
-      const rate = Number(baud.value);
+      const rate = baudValue();
       if (!validBaud(rate)) throw Error('Baud rate must be an integer from 50 to 4000000.');
       notice = '';
       if (state.connected && rate !== state.baudrate) await connect(state.port, rate);
-      else { api.setSetting('arduino.serialBaud', rate); update(); }
+      else { api.setSetting('arduino.serialBaud', rate); editingBaud = false; showBaud(rate); update(); }
     }
 
     get('serial-toggle').addEventListener('click', () => {
       resume = null;
       (state.connected ? disconnect() : connect()).catch(report);
     });
-    baud.addEventListener('change', () => setBaud().catch(report));
-    baud.addEventListener('keydown', event => {
+    baud.addEventListener('change', () => {
+      get('serial-custom-label').hidden = baud.value !== 'custom';
+      editingBaud = baud.value === 'custom';
+      if (editingBaud) { customBaud.focus(); customBaud.select(); }
+      else setBaud().catch(report);
+    });
+    customBaud.addEventListener('input', () => { editingBaud = true; });
+    customBaud.addEventListener('change', () => setBaud().catch(report));
+    customBaud.addEventListener('keydown', event => {
       if (event.key === 'Enter') { event.preventDefault(); setBaud().catch(report); }
     });
     get('serial-clear').addEventListener('click', () => change('Clearing…', () => request('/serial/clear', {})).catch(report));
