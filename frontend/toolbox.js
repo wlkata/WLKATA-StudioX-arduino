@@ -98,7 +98,6 @@
       group('I/O', [
         block('arduino_high_low'),
         block('arduino_digital_write_value', { PIN: pin('13'), STATE: { shadow: { type: 'arduino_high_low', fields: { LEVEL: 'HIGH' } } } }),
-        block('arduino_digital_write', { PIN: pin('13') }, { LEVEL: 'HIGH' }),
         block('arduino_digital_read', { PIN: pin('2') }),
         block('arduino_analog_write', { PIN: pin('9'), VALUE: number(128) }),
         block('arduino_analog_read', { PIN: pin('A0') }),

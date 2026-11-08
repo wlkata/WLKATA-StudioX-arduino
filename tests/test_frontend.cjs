@@ -131,8 +131,8 @@ app.whenReady().then(async () => {
     assert.deepStrictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).map(item=>item.getName ? item.getName() : 'separator')"),['Logic','Variables','Functions','Robot','Accessories','separator','I/O','Timing','Serial','Libraries / C++']);
     assert.strictEqual(await run("document.querySelector('#arduino-blockly .blocklyTreeSeparator')!==null"),true);
     await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='I/O'))");
-    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===11");
-    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type)"),['arduino_high_low','arduino_digital_write_value','arduino_digital_write','arduino_digital_read','arduino_analog_write','arduino_analog_read','arduino_pin_mode','arduino_pin','arduino_builtin_led','arduino_tone','arduino_no_tone']);
+    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===10");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type)"),['arduino_high_low','arduino_digital_write_value','arduino_digital_read','arduino_analog_write','arduino_analog_read','arduino_pin_mode','arduino_pin','arduino_builtin_led','arduino_tone','arduino_no_tone']);
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
     assert.strictEqual(await run("ws.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),true);
     await run("document.getElementById('arduino-import-main').click()");
