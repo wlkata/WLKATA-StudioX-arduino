@@ -406,6 +406,12 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     await run("az.getVariableMap().renameVariable(az.getVariableMap().getVariableById('red'),'pink');void 0");
     await wait("document.getElementById('arduino-code').value.includes('v_pointerSensor.read(&v_pink)')");
+    const escapedText=String.raw`red\tgreen\nliteral\\t`;
+    await run(`window.escapedPrint=Blockly.serialization.blocks.append({type:'arduino_serial_print',fields:{NEWLINE:'FALSE'},inputs:{VALUE:{block:{type:'text',fields:{TEXT:${JSON.stringify(escapedText)}}}}}},az);az.getBlocksByType('arduino_loop',false)[0].getInput('DO').connection.connect(escapedPrint.previousConnection);void 0;`);
+    const expectedPrint=String.raw`Serial.print(String("red\tgreen\nliteral\\t"));`;
+    await wait('document.getElementById("arduino-code").value.includes('+JSON.stringify(expectedPrint)+')');
+    assert.strictEqual(await run("escapedPrint.getInputTargetBlock('VALUE').getFieldValue('TEXT')"),escapedText,'text fields keep the typed escape spelling');
+    await wait("!document.getElementById('arduino-compile').disabled");
     await run("document.getElementById('arduino-serial-tab').click();document.getElementById('arduino-port').value='COM9';document.getElementById('arduino-port').dispatchEvent(new Event('change'))");
     assert.strictEqual(await run("document.getElementById('arduino-serial-panel').hidden"),false);
     assert.strictEqual(await run("calls.filter(c=>c.endpoint==='/serial/connect').length"),0,'monitor does not open a port at startup');

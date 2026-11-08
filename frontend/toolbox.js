@@ -15,7 +15,7 @@
       if (parameter.kind === 'boolean' && (!raw || ['true','false'].includes(raw))) return {shadow:{type:'logic_boolean',fields:{BOOL:raw === 'false' ? 'FALSE' : 'TRUE'}}};
       if (parameter.kind === 'text' && (!raw || /^".*"$/.test(raw))) {
         let value = '';
-        try { value = raw ? JSON.parse(raw) : ''; } catch (_) {}
+        try { value = raw ? cppTypes.textField(JSON.parse(raw)) : ''; } catch (_) {}
         return {shadow:{type:'text',fields:{TEXT:value}}};
       }
       return {shadow:{type:'arduino_cpp_expression',fields:{CODE:raw || '0',RETURN_TYPE:parameter.kind === 'cpp' ? 'cpp' : parameter.kind}}};
@@ -63,6 +63,7 @@
         if (item.contents) {
           const contents = filter(item.contents);
           if (item.contents.length && !contents.length && !item.custom) return [];
+          if (item.name === 'Text') contents.unshift({kind:'label',text:'Escapes: \\t tab, \\n newline, \\\\ backslash'});
           return [{ ...item, contents }];
         }
         return [item];

@@ -28,12 +28,22 @@
   }
   function cppString(value) {
     let out = '"';
+    const controls = {7:'\\a',8:'\\b',9:'\\t',10:'\\n',11:'\\v',12:'\\f',13:'\\r'};
     for (const byte of new TextEncoder().encode(String(value))) {
-      if (byte === 34 || byte === 92) out += '\\' + String.fromCharCode(byte);
+      if (controls[byte]) out += controls[byte];
+      else if (byte === 34 || byte === 92) out += '\\' + String.fromCharCode(byte);
       else if (byte >= 32 && byte <= 126) out += String.fromCharCode(byte);
       else out += '\\' + byte.toString(8).padStart(3, '0');
     }
     return out + '"';
+  }
+
+  function textLiteral(value) {
+    const escapes = {n:'\n',r:'\r',t:'\t',a:'\x07',b:'\b',f:'\f',v:'\v','0':'\0','\\':'\\','"':'"',"'":"'"};
+    // Decode only named escapes, then quote the resulting value normally.
+    // One pass makes \\t literal while \t becomes a tab. Unknown escapes stay literal.
+    const decoded = String(value).replace(/\\([nrtabfv0\\"'])/g, (_, key) => escapes[key]);
+    return cppString(decoded);
   }
 
   const nativeTypes = {int:'number',long:'number','unsigned int':'number','unsigned long':'number',
@@ -257,7 +267,7 @@
         if (kind === 'cpp') return [code];
         if (kind === 'text') {
           const source = child(block, 'ARG_' + index);
-          if (parameter.type.includes('*') && source?.type === 'text') return [cppString(field(source, 'TEXT', ''))];
+          if (parameter.type.includes('*') && source?.type === 'text') return [textLiteral(field(source, 'TEXT', ''))];
           if (parameter.type.includes('std::string')) return ['std::string(String(' + code + ').c_str())'];
           return [parameter.type.includes('*') ? 'String(' + code + ').c_str()' : 'String(' + code + ')'];
         }
@@ -293,7 +303,7 @@
           const value = variable(block);
           return {code: '&' + value.cpp, type: 'cpp', cppType: (value.declaration?.nativeType || cppType(value.type)) + ' *'};
         }
-        case 'text': return text('String(' + cppString(field(block, 'TEXT', '')) + ')');
+        case 'text': return text('String(' + textLiteral(field(block, 'TEXT', '')) + ')');
         case 'math_arithmetic': {
           const a = n('A'), c = n('B');
           const op = { ADD: '+', MINUS: '-', MULTIPLY: '*', DIVIDE: '/' }[field(block, 'OP')];

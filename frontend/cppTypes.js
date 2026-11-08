@@ -26,6 +26,13 @@
     return normalized;
   }
 
+  function textField(value) {
+    const escapes = {'\0':'\\0','\x07':'\\a','\b':'\\b','\t':'\\t','\n':'\\n','\v':'\\v','\f':'\\f','\r':'\\r','\\':'\\\\'};
+    // Header defaults are parsed into values first; represent those values in
+    // the editor's escape syntax so a literal backslash is not decoded twice.
+    return String(value).replace(/[\x00\x07-\x0d\\]/g, character => escapes[character]);
+  }
+
   const scalar = type => type === 'number' || type === 'boolean';
   const comparable = (left, right) => left === right && left !== 'void' || scalar(left) && scalar(right);
 
@@ -54,7 +61,7 @@
     checker.studioxCppComparisons_ = true;
   }
 
-  const api = {category, signature, comparable, functionKey, configureWorkspace};
+  const api = {category, signature, textField, comparable, functionKey, configureWorkspace};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.StudioXArduinoCppTypes = api;
 })(typeof window !== 'undefined' ? window : globalThis);

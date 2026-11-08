@@ -29,7 +29,7 @@
     if (parameter.kind === 'number' && (!raw || Number.isFinite(Number(raw)))) return {type:'math_number',fields:{NUM:raw ? Number(raw) : 0}};
     if (parameter.kind === 'boolean' && (!raw || ['true','false'].includes(raw))) return {type:'logic_boolean',fields:{BOOL:raw === 'true' ? 'TRUE' : 'FALSE'}};
     if (parameter.kind === 'text' && (!raw || /^".*"$/.test(raw))) {
-      try { return {type:'text',fields:{TEXT:raw ? JSON.parse(raw) : ''}}; } catch (_) {}
+      try { return {type:'text',fields:{TEXT:raw ? cppTypes.textField(JSON.parse(raw)) : ''}}; } catch (_) {}
     }
     return raw ? {type:'arduino_cpp_expression',fields:{CODE:raw,RETURN_TYPE:parameter.kind}} : null;
   }

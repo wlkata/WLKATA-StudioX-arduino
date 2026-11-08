@@ -25,7 +25,7 @@ assert.match(generated.code,/v_robot.movePose\(\(uint8_t\)\(2\), \(bool\)\(true\
 assert.match(generated.code,/v_robot.setEndtPump\(\(uint8_t\)\(1\)\)/);
 assert.match(generated.code,/v_robot.setEndtGripper\(\(uint8_t\)\(2\)\)/);
 assert.match(generated.code,/v_robot.setEndtPump\(\(uint8_t\)\(0\)\)/);
-assert.match(generated.code,/\\015\\012/);assert.match(generated.code,/sendMsg\(.*false/s);
+assert.match(generated.code,/(?:\\r\\n|\\015\\012)/);assert.match(generated.code,/sendMsg\(.*false/s);
 assert.match(generated.code,/1.5\) \* \(1000/);
 assert.ok(!/VirtualMirobot|StudioXObject|new Control/.test(generated.code));
 // E4 is converted only when explicitly identified; combined E4/MT4 stays pending.

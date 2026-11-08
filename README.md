@@ -163,7 +163,24 @@ PWM capability, and tone support depend on the selected board.
 
 PWM values are clamped to 0–255; use a PWM-capable pin for your board.
 Serial output defaults to 9600 baud unless you add an explicit serial begin
-block. Simple text/serial output does not include a serial-monitor UI.
+block. The Serial tab displays output from the selected port at the chosen baud rate.
+
+Arduino text blocks interpret named escape sequences before generating C++:
+
+| Type in the text block | Result |
+| --- | --- |
+| `\t` | Tab |
+| `\n` | Newline |
+| `\r` | Carriage return |
+| `\\` | Literal backslash |
+| `\\t` | Literal text `\t` |
+
+This applies to Print, Serial print, joined/stored text, and library string
+arguments. Alert (`\a`), backspace (`\b`), form feed (`\f`), vertical tab (`\v`),
+escaped quotes (`\"`, `\'`), and NUL (`\0`) are also recognized. NUL terminates
+ordinary C strings/Arduino String construction. Other sequences stay literal.
+Use doubled backslashes in paths, such as `C:\\temp\\file.txt`. Workspace fields
+keep exactly what you typed; decoding happens only when generating Arduino code.
 
 Every active block is checked, including nested inputs. Unsupported blocks,
 missing values, type conflicts, duplicate entry blocks, and invalid loop-flow
@@ -339,6 +356,7 @@ The monitor uses the extension's managed [Arduino CLI monitor](https://arduino.g
 node tests/test_compiler.js
 node tests/test_cpp_types.js --studiox-root ../blockly
 node tests/test_address_of.js --studiox-root ../blockly
+node tests/test_text_escapes.js
 node tests/test_toolbox.js
 node tests/test_scaffold.js
 node tests/test_dropdowns.js --studiox-root ../blockly
