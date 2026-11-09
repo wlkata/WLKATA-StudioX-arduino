@@ -97,10 +97,10 @@
           const card = element('div', '', 'arduino-manager-card');
           card.appendChild(element('h4', library.name));
           card.appendChild(element('p', library.description || ''));
-          card.appendChild(element('p', library.installedVersion ? 'Installed: ' + library.installedVersion : 'Not installed'));
+          card.appendChild(element('p', library.bundled ? 'Included with extension: ' + library.installedVersion : library.installedVersion ? 'Installed: ' + library.installedVersion : 'Not installed'));
           card.appendChild(element('p', 'Architectures: ' + library.architectures.join(', ')));
           const controls = element('div', '', 'arduino-manager-search');
-          if (!local) {
+          if (!local && !library.bundled) {
             const versions = document.createElement('select'); versions.setAttribute('aria-label', library.name + ' version');
             [...new Set([library.version, ...(library.versions || []).slice().reverse()])].filter(Boolean).forEach(version => {
               const option = element('option', version); option.value = version; versions.appendChild(option);

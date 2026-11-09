@@ -51,7 +51,7 @@
       if (!editor) return;
       const snapshot = editor.snapshot();
       if (token !== generation) return;
-      analysis = window.StudioXArduinoCompiler.compile(snapshot);
+      analysis = window.StudioXArduinoCompiler.compile(snapshot, {board:get('board').value});
       get('code').value = analysis.code;
 
       editor.setDiagnostics(highlights ? analysis.diagnostics : []);
@@ -91,14 +91,15 @@
     if (!editor || !baseToolbox) return;
     const revision = ++catalogRevision;
     const board = get('board').value;
+    window.StudioXArduinoBoardPins.setBoard(editor.workspace, board, Blockly);
     let catalog;
     try { catalog = await request('/libraries/catalog', { board }); }
     catch (error) { catalog = { libraries: [], error: error.message }; }
     if (revision !== catalogRevision || get('board').value !== board) return;
-    const fingerprint = JSON.stringify(catalog);
+    const fingerprint = JSON.stringify({board,catalog});
     if (fingerprint !== catalogFingerprint) {
       window.StudioXArduinoLibraryBlocks.setCatalog(editor.workspace, catalog);
-      editor.updateToolbox(window.StudioXArduinoToolbox.build(baseToolbox, catalog));
+      editor.updateToolbox(window.StudioXArduinoToolbox.build(baseToolbox, catalog, board));
       catalogFingerprint = fingerprint;
     }
   }
@@ -266,9 +267,10 @@
     if (!mappingResponse.ok) throw new Error('Could not load the Python-to-Arduino robot mapping.');
     window.StudioXArduinoRobotMapping.configure(await mappingResponse.json());
     baseToolbox = await api.getWorkspaceToolbox();
-    const toolbox = window.StudioXArduinoToolbox.build(baseToolbox);
+    const initialBoard = api.getSetting('arduino.board', 'arduino:avr:uno');
+    const toolbox = window.StudioXArduinoToolbox.build(baseToolbox, {libraries:[]}, initialBoard);
     editor = window.StudioXArduinoEditor.create(get('blockly'), {
-      api, toolbox, sourceToolbox: baseToolbox,
+      api, toolbox, board:initialBoard, sourceToolbox: baseToolbox,
       onManageLibraries: () => managers.openLibraries(),
       scale: window.AppPreferences && AppPreferences.getBlockScale ? AppPreferences.getBlockScale() : 1,
       isActive: () => api.isActive('arduino'),
@@ -340,7 +342,7 @@
     get('board').value = api.getSetting('arduino.board', 'arduino:avr:uno');
     get('board').addEventListener('change', () => {
       api.setSetting('arduino.board', get('board').value);
-      message('Board selected. Upload will compile if needed.'); buttons(); refreshLibraryCatalog();
+      message('Board selected. Upload will compile if needed.'); refreshLibraryCatalog(); analyze();
     });
     get('port').addEventListener('change', () => {
       get('manual-port-label').hidden = get('port').value !== 'manual'; buttons(); serialMonitor.targetChanged();

@@ -1,12 +1,13 @@
 /* Reuse general categories; Arduino owns its target-specific block organization. */
 (function (root) {
   const cppTypes = root.StudioXArduinoCppTypes || require('./cppTypes');
+  const boardPins = root.StudioXArduinoBoardPins || require('./boardPins');
   // Follow BlockFactory's order for equivalents; keep additional blocks last.
   const categoryOrder = ['Loops', 'Math', 'Logic', 'Text', 'Lists', 'Variables', 'Functions', 'Robot', 'Accessories'];
   const blockOrder = {
     Loops: ['controls_whileUntil', 'controls_for', 'controls_flow_statements'],
-    Math: ['math_number', 'math_arithmetic', 'math_modulo', 'math_trig', 'math_single', 'math_round', 'math_random_int', 'math_random_float', 'math_constrain'],
-    Logic: ['logic_compare', 'logic_operation', 'logic_negate', 'logic_boolean', 'logic_ternary'],
+    Math: ['math_number','math_arithmetic','arduino_remainder','arduino_bitwise','math_trig','math_single','arduino_bit_not','arduino_increment_value','arduino_variable_operation','math_round','arduino_square','arduino_sizeof','arduino_min_max','arduino_random_seed','arduino_random_int','math_random_int','math_constrain','arduino_map'],
+    Logic: ['logic_compare', 'logic_operation', 'logic_negate', 'logic_boolean', 'logic_null', 'logic_ternary'],
     Text: ['text', 'text_join', 'text_indexOf', 'text_getSubstring', 'text_changeCase', 'text_trim', 'text_length', 'text_charAt'],
     Lists: ['lists_create_with', 'lists_length', 'lists_getIndex', 'lists_setIndex'],
     Robot: ['setup_robot', 'robot_wait_idle', 'robot_send_msg', 'robot_homing', 'robot_zero', 'write_coordinate', 'write_angle', 'robot_speed'],
@@ -24,10 +25,12 @@
     // Labels, buttons and existing separators keep their positions.
     return contents.map(item => item.kind === 'block' ? blocks[index++] : item);
   }
-  function build(source, catalog = { libraries: [] }) {
+  function build(source, catalog = { libraries: [] }, board = boardPins.defaultBoard) {
     const toolbox = JSON.parse(JSON.stringify(source));
     const number = value => ({ shadow: { type: 'math_number', fields: { NUM: value } } });
     const pin = value => ({ shadow: { type: 'arduino_pin', fields: { PIN: value } } });
+    const interruptPins = boardPins.interruptPins(board);
+    const interruptPin = () => ({shadow:{type:'arduino_interrupt_pin',fields:{PIN:interruptPins?.[0] || '?'}}});
     const block = (type, inputs = {}, fields = {}) => ({ kind: 'block', type, inputs, fields });
     const group = (name, contents) => ({ kind: 'category', name, colour: '#00979D', contents });
     function shadow(parameter) {
@@ -92,7 +95,38 @@
         return [item];
       });
     }
-    toolbox.contents = ordered(filter(toolbox.contents).filter(item => item.name !== 'Arduino'), categoryOrder, item => item.name);
+    toolbox.contents = filter(toolbox.contents).filter(item => item.name !== 'Arduino');
+    function enrich(name, defaults) {
+      let category=toolbox.contents.find(item=>item.name===name);
+      if (!category) {category={kind:'category',name,colour:name==='Math' ? '#5C68A6' : '#5C81A6',contents:[]};toolbox.contents.push(category);}
+      for (const entry of defaults) {
+        const existing=category.contents.find(item=>item.kind==='block' && item.type===entry.type);
+        if (existing) existing.inputs={...entry.inputs,...existing.inputs};
+        else category.contents.push(entry);
+      }
+      category.contents=orderBlocks(name,category.contents);
+    }
+    enrich('Math',[
+      block('math_number'),block('math_arithmetic',{A:number(1),B:number(1)}),
+      block('arduino_remainder',{A:number(5),B:number(2)}),block('arduino_bitwise',{A:number(0),B:number(0)}),
+      block('math_trig',{NUM:number(45)}),block('math_single',{NUM:number(9)}),block('arduino_bit_not',{NUM:number(0)}),
+      block('arduino_increment_value'),block('arduino_variable_operation',{VALUE:number(1)}),
+      block('math_round',{NUM:number(3.5)}),block('arduino_square',{NUM:number(2)}),
+      block('arduino_sizeof',{VALUE:{shadow:{type:'arduino_type',fields:{TYPE:'int'}}}}),
+      block('arduino_min_max',{A:number(1),B:number(2)}),
+      block('arduino_random_seed',{NUM:{shadow:{type:'arduino_millis'}}}),
+      block('arduino_random_int',{FROM:number(1),TO:number(100)}),block('math_random_int',{FROM:number(1),TO:number(100)}),
+      block('math_constrain',{VALUE:number(50),LOW:number(1),HIGH:number(100)}),
+      block('arduino_map',{VALUE:number(50),FROM_LOW:number(1),FROM_HIGH:number(100),TO_LOW:number(1),TO_HIGH:number(1000)}),
+      block('math_modulo',{DIVIDEND:number(5),DIVISOR:number(2)}),block('math_random_float'),
+    ]);
+    enrich('Logic',[
+      block('logic_compare',{A:number(1),B:number(1)}),
+      block('logic_operation',{A:{shadow:{type:'logic_boolean',fields:{BOOL:'TRUE'}}},B:{shadow:{type:'logic_boolean',fields:{BOOL:'FALSE'}}}}),
+      block('logic_negate',{BOOL:{shadow:{type:'logic_boolean',fields:{BOOL:'FALSE'}}}}),block('logic_boolean'),block('logic_null'),
+      block('logic_ternary',{IF:{shadow:{type:'logic_boolean',fields:{BOOL:'TRUE'}}},THEN:number(1),ELSE:number(0)}),
+    ]);
+    toolbox.contents=ordered(toolbox.contents,categoryOrder,item=>item.name);
     if (toolbox.contents.length) toolbox.contents.push({kind: 'sep'});
     toolbox.contents.push(
       group('I/O', [
@@ -101,12 +135,36 @@
         block('arduino_digital_read', { PIN: pin('2') }),
         block('arduino_analog_write', { PIN: pin('9'), VALUE: number(128) }),
         block('arduino_analog_read', { PIN: pin('A0') }),
+        block('arduino_soft_pwm_write', { PIN: pin('4'), VALUE: number(128) }),
+        block('arduino_soft_pwm_stop', { PIN: pin('4') }),
+        block('arduino_button_event', { PIN: pin('2') }),
+        block('arduino_attach_interrupt', { PIN: interruptPin() }),
+        block('arduino_detach_interrupt', { PIN: interruptPin() }),
+        block('arduino_attach_pin_change_interrupt', { PIN: pin('10') }),
+        block('arduino_detach_pin_change_interrupt', { PIN: pin('10') }),
+        block('arduino_pulse_in', { PIN: pin('7') }),
+        block('arduino_pulse_in_timeout', { PIN: pin('7'), TIMEOUT: number(1000000) }),
         block('arduino_pin_mode', { PIN: pin('13') }, { MODE: 'OUTPUT' }),
+        block('arduino_shift_out', { VALUE: number(0), DATA_PIN: pin('11'), CLOCK_PIN: pin('12') }),
         block('arduino_pin'), block('arduino_builtin_led'),
         block('arduino_tone', { PIN: pin('8'), FREQUENCY: number(440), DURATION: number(1000) }),
         block('arduino_no_tone', { PIN: pin('8') }),
       ]),
-      group('Timing', [block('arduino_delay', { MS: number(1000) }), block('arduino_millis')]),
+      // Shared control blocks remain in their original Loops/Logic categories.
+      group('Control', [
+        block('arduino_end_program'),
+        block('arduino_do_while',{BOOL:{shadow:{type:'logic_boolean',fields:{BOOL:'TRUE'}}}}),
+        block('arduino_delay',{MS:number(1000)}),
+        block('arduino_switch',{VALUE:number(1),CASE0:number(1),CASE1:number(2)}),
+        block('arduino_millis'),
+        block('arduino_timer2_configure',{INTERVAL:number(500)}),
+        block('arduino_timer2_start'),block('arduino_timer2_stop'),
+        block('arduino_timer_every',{INTERVAL:number(1000)}),
+        block('arduino_timer_callback'),
+        block('arduino_timer_schedule',{INTERVAL:number(1000),COUNT:number(1)}),
+        block('arduino_interrupts'),block('arduino_no_interrupts'),
+        block('arduino_task'),block('arduino_task_yield'),block('arduino_task_sleep',{MS:number(1000)}),
+      ]),
       group('Serial', [block('arduino_serial_begin'), block('arduino_serial_print', { VALUE: { shadow: { type: 'text', fields: { TEXT: 'Hello' } } } })]),
       group('Libraries / C++', [
         group('Manage libraries', [{kind:'button',text:'Install / manage libraries…',callbackkey:'ARDUINO_MANAGE_LIBRARIES'}]),

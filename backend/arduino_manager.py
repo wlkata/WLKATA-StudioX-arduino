@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from toolchain import installed_cli
 from local_library import validate_source, prepare_zip
 from header_parser import parse_header
+import bundled_libraries
 from serial_monitor import SerialMonitor
 
 FQBN = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_=,.-]+)?$')
@@ -183,11 +184,10 @@ class ArduinoManager:
     def libraries(self):
         payload = self._json(['lib', 'list'])
         libraries = []
-        for item in payload.get('installed_libraries') or []:
-            library = item.get('library') or {}
+        for library in bundled_libraries.combine(payload.get('installed_libraries') or []):
             libraries.append({'name': library['name'], 'version': library.get('version', ''),
                               'installedVersion': library.get('version', ''),
-                              'description': library.get('sentence', ''),
+                              'description': library.get('sentence', ''), 'bundled': library.get('bundled', False),
                               'headers': library.get('provides_includes') or [],
                               'architectures': library.get('architectures') or [],
                               'versions': [library.get('version', '')]})
@@ -211,8 +211,7 @@ class ArduinoManager:
             libraries = []
             total_bytes = 0
             used_keys = set()
-            for item in payload.get('installed_libraries') or []:
-                library = item.get('library') or {}
+            for library in bundled_libraries.combine(payload.get('installed_libraries') or []):
                 folder = Path(library.get('install_dir') or '')
                 source = Path(library.get('source_dir') or folder / 'src')
                 if not source.is_dir():
@@ -264,7 +263,7 @@ class ArduinoManager:
             latest = item.get('latest') or {}
             local = installed.get(item['name'], {})
             libraries.append({'name': item['name'], 'version': latest.get('version', ''),
-                              'installedVersion': local.get('version', ''),
+                              'installedVersion': local.get('version', ''), 'bundled': local.get('bundled', False),
                               'description': latest.get('sentence', ''),
                               'headers': local.get('headers', []),
                               'architectures': latest.get('architectures') or [],
@@ -422,7 +421,12 @@ class ArduinoManager:
             with self._lock:
                 job.update(folder=str(folder), sketch=str(sketch), output=str(output),
                            sourceHash=hashlib.sha256(source.encode('utf-8')).hexdigest())
-            self._run(job, ['compile', '--fqbn', board, '--build-path', str(folder / 'build'), '--output-dir', str(output), str(sketch)], timeout=180)
+            library_args = ['--libraries', str(bundled_libraries.LIBRARY_ROOT)]
+            # Explicit roots outrank architecture-matched copies in the user's
+            # sketchbook, keeping browser signatures and compiled APIs aligned.
+            for library in bundled_libraries.libraries():
+                library_args += ['--library', library['install_dir']]
+            self._run(job, ['compile', *library_args, '--fqbn', board, '--build-path', str(folder / 'build'), '--output-dir', str(output), str(sketch)], timeout=180)
         return self._new_job('compile', board, build)
 
     def upload(self, compile_id, port):

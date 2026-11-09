@@ -38,7 +38,8 @@ app.whenReady().then(async () => {
     await run(`window.findEnclosingProcedure=()=>null;window.getAllLocalScopeNames=()=>new Set();
       initSetupRobotBlock();initMoveRobotBlocks();initRobotCommandBlocks();
       window.ws=Blockly.inject('blocklyDiv',{toolbox:{kind:'categoryToolbox',contents:[
-      {kind:'category',name:'Logic',contents:[{kind:'block',type:'controls_if'}]},
+      {kind:'category',name:'Logic',contents:[{kind:'block',type:'controls_if'},{kind:'block',type:'logic_boolean'}]},
+      {kind:'category',name:'Loops',contents:['controls_repeat_ext','controls_whileUntil','controls_for','controls_flow_statements'].map(type=>({kind:'block',type}))},
       {kind:'category',name:'Variables',custom:'VARIABLE'},
       {kind:'category',name:'Functions',custom:'PROCEDURE'},
       {kind:'category',name:'Robot',contents:['setup_robot','robot_homing','robot_zero','robot_speed','write_coordinate','write_angle','robot_wait_idle','robot_send_msg','robot_delay'].map(type=>({kind:'block',type}))},
@@ -77,7 +78,7 @@ app.whenReady().then(async () => {
         if(endpoint==='/libraries/catalog')return {success:true,libraries:libraryInstalled?[{name:'Servo',version:'1.3.0',headers:[{name:'Servo.h',functions:[{id:'servo',header:'Servo.h',library:'Servo',name:'Servo',owner:'Servo',qualifiedName:'Servo',constructor:true,parameters:[],supported:true,returnKind:'void'},{id:'write',header:'Servo.h',library:'Servo',name:'write',owner:'Servo',qualifiedName:'Servo::write',constructor:false,parameters:[{name:'angle',type:'int',kind:'number'}],supported:true,returnKind:'void'}],constants:[]}]}]:[],warnings:[]};
         if(endpoint==='/boards/sources')return {success:true,urls:[]};
         if(endpoint==='/boards/search')return {success:true,total:1,platforms:[{id:'arduino:mbed_rp2040',name:'Pico boards',version:'4.3.1',installedVersion:'',boards:['Raspberry Pi Pico']}]};
-        if(endpoint==='/boards')return {success:true,boards:[{name:'Uno',fqbn:'arduino:avr:uno'},{name:'Mega',fqbn:'arduino:avr:mega:cpu=atmega2560'}]};
+        if(endpoint==='/boards')return {success:true,boards:[{name:'Uno',fqbn:'arduino:avr:uno'},{name:'Mega',fqbn:'arduino:avr:mega:cpu=atmega2560'},{name:'Unknown test board',fqbn:'vendor:arch:unknown'}]};
         if(endpoint==='/ports')return {success:true,ports:[{address:'COM9',label:'Test Arduino'}]};
         if(endpoint==='/compile'||endpoint==='/upload'||endpoint==='/core/install'||endpoint==='/boards/install'||endpoint==='/boards/refresh'||endpoint==='/libraries/install'||endpoint==='/libraries/refresh'||endpoint==='/libraries/install-local'){
           if(endpoint==='/upload'&&serialState.connected&&serialState.port===body.port)throw Error('Serial port still owned by monitor');
@@ -128,11 +129,73 @@ app.whenReady().then(async () => {
     await wait("!document.getElementById('arduino-compile').disabled");
     assert.match(await run("document.getElementById('arduino-code').value"),/void setup\(\).*void loop\(/s);
     assert.strictEqual(await run('JSON.stringify(Blockly.serialization.workspaces.save(ws))===beforeMain'),true);
-    assert.deepStrictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).map(item=>item.getName ? item.getName() : 'separator')"),['Logic','Variables','Functions','Robot','Accessories','separator','I/O','Timing','Serial','Libraries / C++']);
+    assert.deepStrictEqual(await run("az.getToolbox().getToolboxItems().filter(item=>!item.getParent()).map(item=>item.getName ? item.getName() : 'separator')"),['Loops','Math','Logic','Variables','Functions','Robot','Accessories','separator','I/O','Control','Serial','Libraries / C++']);
     assert.strictEqual(await run("document.querySelector('#arduino-blockly .blocklyTreeSeparator')!==null"),true);
     await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='I/O'))");
-    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===10");
-    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type)"),['arduino_high_low','arduino_digital_write_value','arduino_digital_read','arduino_analog_write','arduino_analog_read','arduino_pin_mode','arduino_pin','arduino_builtin_led','arduino_tone','arduino_no_tone']);
+    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===20");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).map(block=>block.type)"),['arduino_high_low','arduino_digital_write_value','arduino_digital_read','arduino_analog_write','arduino_analog_read','arduino_soft_pwm_write','arduino_soft_pwm_stop','arduino_button_event','arduino_attach_interrupt','arduino_detach_interrupt','arduino_attach_pin_change_interrupt','arduino_detach_pin_change_interrupt','arduino_pulse_in','arduino_pulse_in_timeout','arduino_pin_mode','arduino_shift_out','arduino_pin','arduino_builtin_led','arduino_tone','arduino_no_tone']);
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_attach_interrupt',false)[0].getInputTargetBlock('PIN').getField('PIN').getOptions(false).map(item=>item[1])"),['2','3']);
+    await run("document.getElementById('arduino-board').value='arduino:avr:mega:cpu=atmega2560';document.getElementById('arduino-board').dispatchEvent(new Event('change'))");
+    await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_attach_interrupt',false)[0].getInputTargetBlock('PIN').getField('PIN').getOptions(false).length===6");
+    assert.deepStrictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_attach_interrupt',false)[0].getInputTargetBlock('PIN').getField('PIN').getOptions(false).map(item=>item[1])"),['2','3','18','19','20','21']);
+    await run("window.interruptTest=Blockly.serialization.blocks.append({type:'arduino_attach_interrupt',fields:{MODE:'RISING'},inputs:{PIN:{shadow:{type:'arduino_interrupt_pin',fields:{PIN:'18'}}}}},az);interruptTest.initSvg();interruptTest.render();void 0");
+    await wait("document.getElementById('arduino-code').value.includes('digitalPinToInterrupt(18)')");
+    await run("document.getElementById('arduino-board').value='arduino:avr:uno';document.getElementById('arduino-board').dispatchEvent(new Event('change'))");
+    await wait("document.getElementById('arduino-problems').textContent.includes('not a hardware-interrupt pin')");
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getFieldValue('PIN')"),'18');
+    assert.strictEqual(await run("document.getElementById('arduino-compile').disabled"),true);
+    assert.match(await run("interruptTest.getInputTargetBlock('PIN').getField('PIN').getText()"),/not supported/);
+    await run("interruptTest.getInputTargetBlock('PIN').setFieldValue('3','PIN')");
+    await wait("!document.getElementById('arduino-compile').disabled");
+    await run("interruptTest.getInputTargetBlock('PIN').setFieldValue('2','PIN');document.getElementById('arduino-board').value='vendor:arch:unknown';document.getElementById('arduino-board').dispatchEvent(new Event('change'))");
+    await wait("document.getElementById('arduino-problems').textContent.includes('Check the board pinout')");
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getFieldValue('PIN')"),'?');
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getField('PIN').getText()"),'Check board pinout');
+    assert.strictEqual(await run("document.getElementById('arduino-compile').disabled"),true);
+    await run("interruptTest.getInputTargetBlock('PIN').setFieldValue('?','PIN');document.getElementById('arduino-board').value='arduino:avr:mega:cpu=atmega2560';document.getElementById('arduino-board').dispatchEvent(new Event('change'))");
+    await wait("!document.getElementById('arduino-compile').disabled && document.getElementById('arduino-problems').children.length===0");
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getFieldValue('PIN')"),'2');
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getField('PIN').getText()"),'2');
+    assert.strictEqual(await run("interruptTest.getInputTargetBlock('PIN').getSvgRoot().classList.contains('arduino-unsupported')"),false);
+    await run("document.getElementById('arduino-board').value='arduino:avr:uno';document.getElementById('arduino-board').dispatchEvent(new Event('change'))");
+    await run("interruptTest.dispose();void 0");
+    await wait("!document.getElementById('arduino-code').value.includes('attachInterrupt(')");
+    await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Loops'))");
+    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===4");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('controls_whileUntil',false).length"),1,'Shared loops remain in the original Loops category');
+    await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Control'))");
+    await wait("az.getFlyout().getWorkspace().getTopBlocks(true).length===16");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getTopBlocks(true).every(block=>block.type.startsWith('arduino_'))"),true,'Control contains only Arduino additions');
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_delay',false)[0].getField('UNIT').getOptions(false).length"),2);
+    await run("window.switchTest=Blockly.serialization.blocks.append({type:'arduino_switch',inputs:{VALUE:{shadow:{type:'math_number',fields:{NUM:1}}}}},az);switchTest.initSvg();switchTest.render();window.flowTest=az.newBlock('controls_flow_statements');flowTest.initSvg();flowTest.setFieldValue('BREAK','FLOW');switchTest.getInput('DO0').connection.connect(flowTest.previousConnection);flowTest.render();void 0");
+    await wait("document.getElementById('arduino-code').value.includes('switch (1)') && !document.getElementById('arduino-compile').disabled");
+    assert.strictEqual(await run("flowTest.isEnabled() && flowTest.getSurroundLoop()===switchTest"),true,'Arduino switch accepts Break without Blockly disabling it');
+    await run("flowTest.setFieldValue('CONTINUE','FLOW')");
+    await wait("document.getElementById('arduino-problems').textContent.includes('continue must be inside a loop')");
+    await run("window.doTest=Blockly.serialization.blocks.append({type:'arduino_do_while',inputs:{BOOL:{shadow:{type:'logic_boolean',fields:{BOOL:'FALSE'}}}}},az);doTest.initSvg();doTest.render();flowTest.unplug();doTest.getInput('DO').connection.connect(flowTest.previousConnection);void 0");
+    await wait("!document.getElementById('arduino-compile').disabled");
+    assert.strictEqual(await run("flowTest.isEnabled() && flowTest.getSurroundLoop()===doTest"),true);
+    await run("switchTest.dispose();doTest.dispose();window.taskTest=Blockly.serialization.blocks.append({type:'arduino_task',inputs:{LOOP:{block:{type:'arduino_task_sleep',inputs:{MS:{shadow:{type:'math_number',fields:{NUM:10}}}}}}}},az);taskTest.initSvg();taskTest.render();void 0");
+    await wait("document.getElementById('arduino-code').value.includes('defineTask(sx_task_1)') && !document.getElementById('arduino-compile').disabled");
+    await run("taskTest.dispose();void 0");
+    await wait("!document.getElementById('arduino-code').value.includes('SCoop.h')");
+    await run("az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Math'))");
+    await wait("az.getFlyout().getWorkspace().getBlocksByType('arduino_map',false).length===1");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_bitwise',false).length"),1);
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('arduino_sizeof',false)[0].getInputTargetBlock('VALUE').getFieldValue('TYPE')"),'int');
+    const decimalMapState={"type":"text_print","inputs":{"TEXT":{"block":{"type":"arduino_map","fields":{"MODE":"FLOAT"},"inputs":{"VALUE":{"shadow":{"type":"math_number","fields":{"NUM":5}}},"FROM_LOW":{"shadow":{"type":"math_number","fields":{"NUM":0}}},"FROM_HIGH":{"shadow":{"type":"math_number","fields":{"NUM":10}}},"TO_LOW":{"shadow":{"type":"math_number","fields":{"NUM":0}}},"TO_HIGH":{"shadow":{"type":"math_number","fields":{"NUM":9}}}}}}}};
+    await run("window.mathTest=Blockly.serialization.blocks.append("+JSON.stringify(decimalMapState)+",az);mathTest.initSvg();mathTest.render();void 0");
+    await wait("document.getElementById('arduino-code').value.includes('studioxMapDecimal(5, 0, 10, 0, 9)') && !document.getElementById('arduino-compile').disabled");
+    await run("mathTest.dispose();az.getToolbox().setSelectedItem(az.getToolbox().getToolboxItems().find(item=>item.getName&&item.getName()==='Logic'))");
+    await wait("az.getFlyout().getWorkspace().getBlocksByType('logic_null',false).length===1");
+    assert.strictEqual(await run("az.getFlyout().getWorkspace().getBlocksByType('logic_ternary',false).length"),1);
+    const numericLogicState={"type":"text_print","inputs":{"TEXT":{"block":{"type":"logic_ternary","inputs":{"IF":{"block":{"type":"math_number","fields":{"NUM":0}}},"THEN":{"block":{"type":"logic_boolean","fields":{"BOOL":"TRUE"}}},"ELSE":{"block":{"type":"math_number","fields":{"NUM":3}}}}}}}};
+    await run("window.logicTest=Blockly.serialization.blocks.append("+JSON.stringify(numericLogicState)+",az);logicTest.initSvg();logicTest.render();void 0");
+    await wait("!document.getElementById('arduino-compile').disabled && document.getElementById('arduino-code').value.includes('(0 ? true : 3)')");
+    assert.strictEqual(await run("logicTest.getInputTargetBlock('TEXT').getInputTargetBlock('THEN').type"),'logic_boolean');
+    assert.strictEqual(await run("logicTest.getInputTargetBlock('TEXT').getInputTargetBlock('ELSE').type"),'math_number');
+    await run("logicTest.dispose();void 0");
+    await wait("!document.getElementById('arduino-code').value.includes('studioxMapDecimal')");
     assert.strictEqual(await run("az.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),false);
     assert.strictEqual(await run("ws.getToolbox().getToolboxItems().some(item=>item.getName&&item.getName()==='Python')"),true);
     await run("document.getElementById('arduino-import-main').click()");

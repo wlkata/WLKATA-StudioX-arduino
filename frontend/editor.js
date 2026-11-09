@@ -19,6 +19,8 @@
       sounds: false,
       zoom: { controls: true, wheel: true, startScale: options.scale || 1, maxScale: 3, minScale: .3, scaleSpeed: 1.2 },
     });
+    StudioXArduinoBoardPins.setBoard(workspace, options.board || StudioXArduinoBoardPins.defaultBoard, Blockly);
+    StudioXArduinoControlBlocks.configureWorkspace(workspace,Blockly);
     host.dataset.workspaceId = workspace.id;
     for (const [category,callback] of [['Robot','ARDUINO_ROBOT'],['Accessories','ARDUINO_ACCESSORIES']]) {
       workspace.registerToolboxCategoryCallback(callback, () => {

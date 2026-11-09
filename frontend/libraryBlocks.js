@@ -4,6 +4,12 @@
   // in Electron; resolve the shared helper relative to the extension asset.
   const cppTypes = root.StudioXArduinoCppTypes || require(require('url').fileURLToPath(new URL('cppTypes.js', document.currentScript.src)));
   root.StudioXArduinoCppTypes = cppTypes;
+  const boardPins = root.StudioXArduinoBoardPins || (typeof require === 'function' && typeof document !== 'undefined'
+    ? require(require('url').fileURLToPath(new URL('boardPins.js', document.currentScript.src))) : null);
+  if (boardPins) { root.StudioXArduinoBoardPins = boardPins; boardPins.register(Blockly); }
+  const controlBlocks = root.StudioXArduinoControlBlocks || (typeof require === 'function' && typeof document !== 'undefined'
+    ? require(require('url').fileURLToPath(new URL('controlBlocks.js', document.currentScript.src))) : null);
+  if (controlBlocks) { root.StudioXArduinoControlBlocks=controlBlocks;controlBlocks.register(Blockly); }
   const clone = value => value ? JSON.parse(JSON.stringify(value)) : null;
   const check = kind => ({ number: 'Number', boolean: 'Boolean', text: 'String' }[kind] || null);
   const types = ['arduino_class', 'arduino_instance_call', 'arduino_library_call', 'arduino_library_value', 'arduino_library_object', 'arduino_library_object_ref', 'arduino_library_constant'];

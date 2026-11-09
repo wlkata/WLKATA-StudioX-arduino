@@ -4,7 +4,7 @@ const original={kind:'categoryToolbox',contents:[{kind:'category',name:'Logic',c
 const before=JSON.stringify(original);
 const toolbox=build(original);
 assert.strictEqual(JSON.stringify(original),before);
-assert.deepStrictEqual(toolbox.contents.map(item=>item.name || item.kind),['Logic','sep','I/O','Timing','Serial','Libraries / C++']);
+assert.deepStrictEqual(toolbox.contents.map(item=>item.name || item.kind),['Math','Logic','sep','I/O','Control','Serial','Libraries / C++']);
 assert.ok(!toolbox.contents.some(item=>item.name==='Arduino'));
 const io=toolbox.contents.find(item=>item.name==='I/O');
 assert.ok(io.contents.find(item=>item.type==='arduino_digital_write_value').inputs.STATE.shadow);

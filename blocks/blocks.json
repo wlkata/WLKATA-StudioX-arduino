@@ -137,33 +137,62 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "PWM output, clamped to 0\u2013255. Use a PWM-capable pin on your board.",
+    "tooltip": "PWM output, clamped to 0–255. Use a PWM-capable pin on your board.",
     "previousStatement": null,
     "nextStatement": null,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
   },
   {
     "type": "arduino_delay",
-    "message0": "wait %1 milliseconds",
+    "message0": "wait %1 %2",
     "args0": [
       {
         "type": "input_value",
         "name": "MS",
         "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "UNIT",
+        "options": [
+          [
+            "milliseconds",
+            "MS"
+          ],
+          [
+            "microseconds",
+            "US"
+          ]
+        ]
       }
     ],
     "colour": "#00979D",
-    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "tooltip": "Blocking delay using delay() or delayMicroseconds(). Microsecond delay range and accuracy depend on the selected board.",
     "previousStatement": null,
     "nextStatement": null,
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
   },
   {
     "type": "arduino_millis",
-    "message0": "milliseconds since start",
-    "args0": [],
+    "message0": "%1 since start",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "UNIT",
+        "options": [
+          [
+            "milliseconds",
+            "MS"
+          ],
+          [
+            "microseconds",
+            "US"
+          ]
+        ]
+      }
+    ],
     "colour": "#00979D",
-    "tooltip": "Arduino target only. Compile and upload from the Arduino tab.",
+    "tooltip": "Time since startup from millis() or micros(). The counter wraps around; use unsigned subtraction for elapsed-time checks.",
     "output": "Number",
     "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
   },
@@ -235,7 +264,7 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "A digital pin number (0\u2013255) or an analog pin label such as A0. Use the labels supported by your board.",
+    "tooltip": "A digital pin number (0–255) or an analog pin label such as A0. Use the labels supported by your board.",
     "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
     "output": "Number"
   },
@@ -305,7 +334,7 @@
       }
     ],
     "colour": "#00979D",
-    "tooltip": "Play a tone on a buzzer pin. Frequency is clamped to 0\u201365535 Hz. Requires tone support in the selected board core.",
+    "tooltip": "Play a tone on a buzzer pin. Frequency is clamped to 0–65535 Hz. Requires tone support in the selected board core.",
     "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
     "previousStatement": null,
     "nextStatement": null
@@ -544,6 +573,1158 @@
     "output": "ArduinoPointer",
     "colour": "#00979D",
     "tooltip": "Returns &variable for a C++ pointer parameter. Declare the variable with the matching type, such as uint16_t for color-sensor output values.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_soft_pwm_write",
+    "message0": "write software PWM on pin %1 value %2 (0–255)",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Software PWM on digital pins using SoftPWM. Initialized automatically. This bundled library targets AVR boards and uses Timer2, which is also used by tone on Uno/Mega.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_soft_pwm_stop",
+    "message0": "stop software PWM on pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Stop SoftPWM on this pin. The bundled library changes the pin to INPUT with its pull-up enabled. AVR boards only.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_button_event",
+    "message0": "when button on pin %1 %2 (pressed = %3)",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "EVENT",
+        "options": [
+          [
+            "is clicked",
+            "attachClick"
+          ],
+          [
+            "is double-clicked",
+            "attachDoubleClick"
+          ],
+          [
+            "starts a long press",
+            "attachLongPressStart"
+          ],
+          [
+            "is held down",
+            "attachDuringLongPress"
+          ],
+          [
+            "ends a long press",
+            "attachLongPressStop"
+          ]
+        ]
+      },
+      {
+        "type": "field_dropdown",
+        "name": "ACTIVE_LEVEL",
+        "options": [
+          [
+            "LOW",
+            "LOW"
+          ],
+          [
+            "HIGH",
+            "HIGH"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "A top-level event. OneButton checks the pin automatically each Loop; long blocking code can delay detection. LOW enables the internal pull-up; HIGH needs an external pull-down. Use a fixed pin. Multiple events on one pin share a button.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_attach_interrupt",
+    "message0": "attach hardware interrupt on pin %1 edge %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "MODE",
+        "options": [
+          [
+            "rising",
+            "RISING"
+          ],
+          [
+            "falling",
+            "FALLING"
+          ],
+          [
+            "change",
+            "CHANGE"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure a fixed pin as INPUT_PULLUP at the start of Setup; attach this action where the block is placed. Choose an interrupt-capable pin. Keep the action short; avoid delays and Serial. Variable pins are configured at runtime.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null,
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_detach_interrupt",
+    "message0": "detach hardware interrupt on pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure a fixed pin as INPUT at the start of Setup; detach its hardware interrupt where this block is placed. Variable pins are configured at runtime.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_attach_pin_change_interrupt",
+    "message0": "attach pin-change interrupt on pin %1 edge %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "MODE",
+        "options": [
+          [
+            "rising",
+            "RISING"
+          ],
+          [
+            "falling",
+            "FALLING"
+          ],
+          [
+            "change",
+            "CHANGE"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure a fixed pin as INPUT at the start of Setup; attach this action where the block is placed. Requires a supported AVR pin-change interrupt pin. Keep the action short. Variable pins are configured at runtime.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null,
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_detach_pin_change_interrupt",
+    "message0": "detach pin-change interrupt on pin %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure a fixed pin as INPUT at the start of Setup; detach its PinChangeInt handler where this block is placed. Supported AVR boards only. Variable pins are configured at runtime.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_pulse_in",
+    "message0": "pulse duration on pin %1 level %2 (µs)",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "LEVEL",
+        "options": [
+          [
+            "HIGH",
+            "HIGH"
+          ],
+          [
+            "LOW",
+            "LOW"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Measure a pulse in microseconds. Configure a fixed pin as INPUT once at the start of Setup. Waits up to one second and returns 0 on timeout. Variable pins are configured when measured.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": "Number"
+  },
+  {
+    "type": "arduino_pulse_in_timeout",
+    "message0": "pulse duration on pin %1 level %2 timeout %3 µs",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "LEVEL",
+        "options": [
+          [
+            "HIGH",
+            "HIGH"
+          ],
+          [
+            "LOW",
+            "LOW"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "TIMEOUT",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Measure a pulse in microseconds with a timeout in microseconds. Configure a fixed pin as INPUT once at the start of Setup. Returns 0 on timeout. Variable pins are configured when measured.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))",
+    "output": "Number"
+  },
+  {
+    "type": "arduino_shift_out",
+    "message0": "shift out byte %1 data pin %2 clock pin %3 order %4",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "DATA_PIN",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "CLOCK_PIN",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "ORDER",
+        "options": [
+          [
+            "least significant bit first",
+            "LSBFIRST"
+          ],
+          [
+            "most significant bit first",
+            "MSBFIRST"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure fixed data and clock pins as OUTPUT once at the start of Setup; shift out the low 8 bits in the selected order where the block is placed. Set the clock LOW beforehand for a device that reads on rising edges. Variable pins are configured at runtime.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_interrupt_pin",
+    "message0": "interrupt pin %1",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "PIN",
+        "options": [
+          [
+            "2",
+            "2"
+          ],
+          [
+            "3",
+            "3"
+          ]
+        ]
+      }
+    ],
+    "output": "Number",
+    "colour": "#00979D",
+    "tooltip": "Hardware-interrupt pins for the selected board.",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_end_program",
+    "message0": "stop program here",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Wait forever at this instruction, like BlockFactory. Interrupts remain enabled; reset the board to restart.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_do_while",
+    "message0": "do %1",
+    "args0": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Run the body at least once, then repeat while/until the condition holds. Break and continue apply to this loop.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null,
+    "message1": "repeat %1 %2",
+    "args1": [
+      {
+        "type": "field_dropdown",
+        "name": "MODE",
+        "options": [
+          [
+            "while",
+            "WHILE"
+          ],
+          [
+            "until",
+            "UNTIL"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "BOOL",
+        "check": "Boolean"
+      }
+    ]
+  },
+  {
+    "type": "arduino_switch",
+    "message0": "switch integer %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Choose a branch by integer value. Cases must be integer constants. Each case breaks automatically. Right-click to add/remove cases or the default branch.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null,
+    "message1": "case %1 do %2",
+    "args1": [
+      {
+        "type": "input_value",
+        "name": "CASE0",
+        "check": "Number"
+      },
+      {
+        "type": "input_statement",
+        "name": "DO0"
+      }
+    ],
+    "message2": "case %1 do %2",
+    "args2": [
+      {
+        "type": "input_value",
+        "name": "CASE1",
+        "check": "Number"
+      },
+      {
+        "type": "input_statement",
+        "name": "DO1"
+      }
+    ],
+    "message3": "default %1",
+    "args3": [
+      {
+        "type": "input_statement",
+        "name": "DEFAULT"
+      }
+    ]
+  },
+  {
+    "type": "arduino_timer2_configure",
+    "message0": "hardware timer every %1 ms",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "INTERVAL",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Configure MsTimer2 at this instruction. Add Start hardware timer to enable it. One timer per program. Callback runs in an interrupt; keep it short. AVR only; conflicts with software PWM and tone on Uno/Mega.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null,
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_timer2_start",
+    "message0": "start hardware timer",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Start the configured MsTimer2 interrupt timer.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_timer2_stop",
+    "message0": "stop hardware timer",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Stop the MsTimer2 interrupt timer.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_timer_every",
+    "message0": "timer %1: every %2 ms",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "ID",
+        "options": [
+          [
+            "1",
+            "1"
+          ],
+          [
+            "2",
+            "2"
+          ],
+          [
+            "3",
+            "3"
+          ],
+          [
+            "4",
+            "4"
+          ],
+          [
+            "5",
+            "5"
+          ],
+          [
+            "6",
+            "6"
+          ],
+          [
+            "7",
+            "7"
+          ],
+          [
+            "8",
+            "8"
+          ],
+          [
+            "9",
+            "9"
+          ],
+          [
+            "10",
+            "10"
+          ],
+          [
+            "11",
+            "11"
+          ],
+          [
+            "12",
+            "12"
+          ],
+          [
+            "13",
+            "13"
+          ],
+          [
+            "14",
+            "14"
+          ],
+          [
+            "15",
+            "15"
+          ],
+          [
+            "16",
+            "16"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "INTERVAL",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Top-level repeating timer. Registers after Setup and is checked automatically during Loop. Timer numbers must be unique. Uses SimpleTimer; long blocking code delays callbacks.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_timer_callback",
+    "message0": "scheduled action %1",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "ID",
+        "options": [
+          [
+            "1",
+            "1"
+          ],
+          [
+            "2",
+            "2"
+          ],
+          [
+            "3",
+            "3"
+          ],
+          [
+            "4",
+            "4"
+          ],
+          [
+            "5",
+            "5"
+          ],
+          [
+            "6",
+            "6"
+          ],
+          [
+            "7",
+            "7"
+          ],
+          [
+            "8",
+            "8"
+          ],
+          [
+            "9",
+            "9"
+          ],
+          [
+            "10",
+            "10"
+          ],
+          [
+            "11",
+            "11"
+          ],
+          [
+            "12",
+            "12"
+          ],
+          [
+            "13",
+            "13"
+          ],
+          [
+            "14",
+            "14"
+          ],
+          [
+            "15",
+            "15"
+          ],
+          [
+            "16",
+            "16"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Top-level callback definition. Use Schedule action to run it later. All scheduled actions and repeating timers share SimpleTimer (10 active timers).",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "message1": "do %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "DO"
+      }
+    ]
+  },
+  {
+    "type": "arduino_timer_schedule",
+    "message0": "schedule action %1 every %2 ms repeat %3 times",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "ID",
+        "options": [
+          [
+            "1",
+            "1"
+          ],
+          [
+            "2",
+            "2"
+          ],
+          [
+            "3",
+            "3"
+          ],
+          [
+            "4",
+            "4"
+          ],
+          [
+            "5",
+            "5"
+          ],
+          [
+            "6",
+            "6"
+          ],
+          [
+            "7",
+            "7"
+          ],
+          [
+            "8",
+            "8"
+          ],
+          [
+            "9",
+            "9"
+          ],
+          [
+            "10",
+            "10"
+          ],
+          [
+            "11",
+            "11"
+          ],
+          [
+            "12",
+            "12"
+          ],
+          [
+            "13",
+            "13"
+          ],
+          [
+            "14",
+            "14"
+          ],
+          [
+            "15",
+            "15"
+          ],
+          [
+            "16",
+            "16"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "INTERVAL",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "COUNT",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Schedule the matching action at this instruction. 1 runs once; 0 repeats forever. Requires a Scheduled action definition. Each call uses a SimpleTimer slot (10 active timers).",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_interrupts",
+    "message0": "enable interrupts",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Call interrupts(). Normally pair with Disable interrupts for a short critical section.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_no_interrupts",
+    "message0": "disable interrupts",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Call noInterrupts(). Keep this section short; timer callbacks and timekeeping depend on interrupts. Pair with Enable interrupts.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_task",
+    "message0": "cooperative task %1",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "ID",
+        "options": [
+          [
+            "1",
+            "1"
+          ],
+          [
+            "2",
+            "2"
+          ],
+          [
+            "3",
+            "3"
+          ],
+          [
+            "4",
+            "4"
+          ],
+          [
+            "5",
+            "5"
+          ],
+          [
+            "6",
+            "6"
+          ],
+          [
+            "7",
+            "7"
+          ],
+          [
+            "8",
+            "8"
+          ]
+        ]
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Top-level SCoop task with its own Setup and Loop. Starts automatically after main Setup. Use task sleep/yield to share execution. AVR only; tasks share RAM (150-byte default stack per task).",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "message1": "setup %1",
+    "args1": [
+      {
+        "type": "input_statement",
+        "name": "SETUP"
+      }
+    ],
+    "message2": "loop %1",
+    "args2": [
+      {
+        "type": "input_statement",
+        "name": "LOOP"
+      }
+    ]
+  },
+  {
+    "type": "arduino_task_yield",
+    "message0": "yield to other tasks",
+    "args0": [],
+    "colour": "#00979D",
+    "tooltip": "Let other SCoop tasks run. Can be placed in main Loop or inside a task. Task scheduling is also checked automatically each main Loop.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_task_sleep",
+    "message0": "sleep this task for %1 ms",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "MS",
+        "check": "Number"
+      }
+    ],
+    "colour": "#00979D",
+    "tooltip": "Inside a cooperative task, suspend this task while others can run. Does not block all tasks. Use ordinary wait for a blocking delay outside tasks.",
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n",
+    "previousStatement": null,
+    "nextStatement": null
+  },
+  {
+    "type": "arduino_remainder",
+    "message0": "integer remainder of %1 ÷ %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "A",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "B",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "C++ signed integer remainder, after converting operands to 32-bit long. The result follows the dividend sign. Divisor must be nonzero; runtime zero returns 0. Blockly modulo remains available separately.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_bitwise",
+    "message0": "32-bit %1 %2 %3",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "A",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "OP",
+        "options": [
+          [
+            "AND &",
+            "AND"
+          ],
+          [
+            "OR |",
+            "OR"
+          ],
+          [
+            "XOR ^",
+            "XOR"
+          ],
+          [
+            "shift left <<",
+            "SHL"
+          ],
+          [
+            "shift right >>",
+            "SHR"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "B",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Convert values to signed 32-bit integers for bit operations. Shifts use 0–31 positions; right shift preserves the sign. Out-of-range runtime shifts return 0.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_bit_not",
+    "message0": "32-bit bitwise NOT %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "NUM",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Invert all 32 bits of the integer value. This is bitwise ~, not Boolean NOT.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_variable_operation",
+    "message0": "numeric variable %1 %2 %3",
+    "args0": [
+      {
+        "type": "field_variable",
+        "name": "VAR",
+        "variable": "item"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "OP",
+        "options": [
+          [
+            "+=",
+            "ADD"
+          ],
+          [
+            "-=",
+            "SUB"
+          ],
+          [
+            "*=",
+            "MUL"
+          ],
+          [
+            "/=",
+            "DIV"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Update the selected numeric variable using C++ compound assignment. Its declared C++ type determines rounding and range.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_increment_value",
+    "message0": "change %1 by %2 and use new value",
+    "args0": [
+      {
+        "type": "field_variable",
+        "name": "VAR",
+        "variable": "item"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "OP",
+        "options": [
+          [
+            "+1",
+            "INC"
+          ],
+          [
+            "−1",
+            "DEC"
+          ]
+        ]
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Prefix increment/decrement of a numeric variable. Changes the variable and returns its new value. For a statement, use Change variable by with 1 or -1.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_square",
+    "message0": "square %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "NUM",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Return the square of the input. The value is evaluated once.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_sizeof",
+    "message0": "size in bytes of %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "VALUE"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "C++ sizeof for a type or value. Connect a Variables type block to inspect a type. The operand is not evaluated. Sizes depend on the selected board; this is not text length.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_min_max",
+    "message0": "%1 of %2 and %3",
+    "args0": [
+      {
+        "type": "field_dropdown",
+        "name": "OP",
+        "options": [
+          [
+            "minimum",
+            "MIN"
+          ],
+          [
+            "maximum",
+            "MAX"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "A",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "B",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Return the smaller/larger numeric value. Both operands are evaluated once.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_random_seed",
+    "message0": "seed random generator with %1",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "NUM",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Call Arduino randomSeed at this instruction. A repeated seed repeats the sequence; Arduino ignores a zero seed.",
+    "previousStatement": null,
+    "nextStatement": null,
+    "python": "raise RuntimeError('Use the Arduino tab to compile and upload Arduino blocks')\n"
+  },
+  {
+    "type": "arduino_random_int",
+    "message0": "Arduino random integer from %1 to less than %2",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "FROM",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "TO",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Arduino random(lower, upper): upper bound is excluded, matching BlockFactory. Bounds convert to 32-bit integers. If lower >= upper, returns lower. The shared Blockly random integer includes both bounds.",
+    "output": "Number",
+    "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
+  },
+  {
+    "type": "arduino_map",
+    "message0": "map %1 as %2 from %3 … %4 to %5 … %6",
+    "args0": [
+      {
+        "type": "input_value",
+        "name": "VALUE",
+        "check": "Number"
+      },
+      {
+        "type": "field_dropdown",
+        "name": "MODE",
+        "options": [
+          [
+            "integer",
+            "INT"
+          ],
+          [
+            "decimal",
+            "FLOAT"
+          ]
+        ]
+      },
+      {
+        "type": "input_value",
+        "name": "FROM_LOW",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "FROM_HIGH",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "TO_LOW",
+        "check": "Number"
+      },
+      {
+        "type": "input_value",
+        "name": "TO_HIGH",
+        "check": "Number"
+      }
+    ],
+    "colour": "#5C68A6",
+    "tooltip": "Linearly map a value between ranges. Integer mode uses Arduino map; decimal mode preserves fractions. Does not clamp the result. Input endpoints must differ; a runtime zero-width input range returns 0.",
+    "output": "Number",
     "python": "(_ for _ in ()).throw(RuntimeError('Use the Arduino tab to compile Arduino blocks'))"
   }
 ]

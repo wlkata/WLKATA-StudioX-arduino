@@ -133,9 +133,9 @@ Python's combined E4 / MT4 model also requires confirmation.
 | Area | Supported |
 | --- | --- |
 | Arduino | On start, repeat forever, pin mode, digital write/read, analog read, PWM write, delay, millis, built-in LED, serial begin/print |
-| Logic | Booleans, comparisons, AND/OR, NOT, ternary expression |
+| Logic | Booleans, comparisons, AND/OR, NOT, null pointer, ternary expression |
 | Loops | Repeat, while/until, numeric for loop, break/continue inside an actual loop |
-| Math | Numbers, arithmetic/power, modulo, square root, absolute/negative, logarithms/exponentials, rounding, finite built-in constants |
+| Math | Arithmetic, trig, rounding, bit operations, variable updates, sizeof, min/max, random/seed, constrain, integer/decimal mapping |
 | Variables | Get, set, numeric change; one inferred number, boolean, text, or library class type per variable |
 | Text | Literals, join, append, length, empty check, print to Serial |
 
@@ -153,17 +153,96 @@ integers and dynamic type changes are not emulated. Text is encoded as UTF-8.
 Library call and parameter checks derive their categories from the declared C++
 types, including fixed-width integers and Arduino's `boolean` alias. Numeric and
 Boolean values can be compared using C++ scalar promotions, so `int8_t != 0` and
-`boolean != 0` are valid comparisons. Other input sockets remain typed. Saved
+`boolean != 0` are valid comparisons. Logical AND/OR/NOT and ternary conditions also accept numeric C++ conditions; numeric/Boolean ternary branches promote to a number. Other sockets retain their declared checks. Saved
 blocks recompute these categories when loaded, and refreshed headers replace
 saved signatures from the same library without mixing classes with equal names.
 The toolbox follows BlockFactory's category/block order for existing equivalents.
 A horizontal divider separates shared Blockly categories from the top-level
-I/O, Timing, Serial, and Libraries / C++ categories. Additional blocks keep their
+I/O, Control, Serial, and Libraries / C++ categories. Additional blocks keep their
 relative order after the equivalents, and library/header nesting stays intact. I/O blocks
 include named pins (`13`, `A0`), digital HIGH/LOW values, condition-driven digital
 writes, and buzzer tone/stop-tone controls, alongside pin mode, digital reads and
 writes, analog reads, and PWM. Value inputs have editable defaults. Pin labels,
 PWM capability, and tone support depend on the selected board.
+
+The first 16 I/O entries cover the complete old BlockFactory In/Out section,
+in its original order. This includes software PWM and stop, five button event
+choices, hardware and pin-change interrupt attach/detach, pulse duration with
+and without a timeout, and shift-out byte. Existing pin/LED and tone blocks
+follow these entries. Block labels describe the operation rather than using
+"software analog output" or "software interrupt."
+
+Button event blocks sit beside Setup and Loop. Events on the same fixed pin
+share one OneButton instance; event registration is generated in Setup and
+polling is generated once per Loop. LOW means pressed with the internal pull-up;
+HIGH disables the pull-up and requires an external pull-down. Keep Loop
+responsive for reliable click/hold detection. Duplicate event handlers or
+conflicting pressed levels on one pin are reported before compilation.
+
+Hardware interrupt attach/detach blocks have a dropdown in their default pin
+value, using the selected board: Uno/Nano offer 2 and 3; Mega offers 2, 3, 18,
+19, 20, and 21; Leonardo/Micro offer 0, 1, 2, 3, and 7. Mega ADK uses the Mega
+list. Board options such as Nano's old bootloader do not change its pin list.
+Switching boards refreshes the choices. An existing pin that is invalid on the
+new board is preserved, marked unavailable, and blocks compilation until fixed.
+You can replace the default value with another numeric block; fixed values are
+still checked for supported boards. For boards without a defined pin list, the
+selector automatically displays Check board pinout and reports a workspace
+problem. Verify the board pinout and replace the dropdown with a pin value to
+use such a board. The previous numeric selection is remembered through board
+changes and saved/copied workspaces. Returning to a listed board restores that
+pin and clears the placeholder warning, or selects the board default if no pin
+was previously chosen. A remembered pin that is invalid on the listed board
+remains visible for correction. Pin-change interrupt blocks use a separate pin
+selection because they support different pins.
+
+Interrupt blocks create separate callback functions. For fixed pins, hardware
+attach requests INPUT_PULLUP, while pin-change attach and either detach request
+INPUT. Like BlockFactory, these implicit pin modes are generated once at the
+beginning of Setup, and attach/detach calls remain where their blocks are placed.
+Repeated requests for the same pin are combined; the last implicit request in
+code-generation order determines its startup mode. Explicit pin-mode blocks
+remain ordinary instructions and can override that mode at runtime. Pins can
+change direction in software; the compiler does not assume this is impossible.
+Choose a supported interrupt pin, and keep interrupt actions short.
+Numeric/boolean Blockly variables referenced in interrupt callbacks are declared
+volatile; multi-byte reads/writes can still require atomic access in your program.
+Pulse duration and timeout are in microseconds; the no-timeout block waits up
+to one second. Both request INPUT during Setup for fixed pins and generate a
+direct pulseIn call at their block. Shift-out similarly requests OUTPUT once for
+fixed data/clock pins and generates a direct shiftOut call. Set the clock LOW
+beforehand when required by your receiving device.
+
+Fixed pin/number/LED blocks generate direct pin arguments without temporary
+variables. Variable or calculated pin values remain configured at their point
+of use, since their values may not be available during startup. Runtime pin
+expressions are evaluated once. Software PWM already initializes once during
+Setup; its library still controls pins internally, including the pull-up change
+performed by SoftPWMEnd.
+
+The extension ships its BlockFactory library copies under this designated path:
+
+```text
+libraries/
+  OneButton/     2.0.1, BSD license
+  SoftPWM/       1.0.1, MIT license
+  PinChangeInt/  2.19 beta, GPL-3.0-or-later
+  MsTimer2/      1.1, LGPL-2.1-or-later
+  SimpleTimer/   Unversioned BlockFactory copy, LGPL-2.1-or-later
+  SCoop/         1.2, GPL-3.0
+```
+
+These copies include their original source, examples, and license notices from
+BlockFactory 1.2.3 beta. They need no additional third-party libraries beyond
+board support. Compilation searches this directory automatically; the Library
+manager labels these libraries "Included with extension," and their headers are
+also available under Libraries / C++. User-installed libraries remain in
+`.data/toolchain/sketchbook/libraries/`; no shipped sources are copied there.
+
+The shipped SoftPWM and PinChangeInt implementations target supported AVR boards,
+including Uno and Mega. Board support provides the Arduino core and toolchain.
+SoftPWM initializes once in Setup and uses Timer2, so software PWM and tone blocks
+cannot be compiled together on these boards. The compiler reports this conflict.
 
 PWM values are clamped to 0–255; use a PWM-capable pin for your board.
 Serial output defaults to 9600 baud unless you add an explicit serial begin
@@ -192,6 +271,91 @@ blocks produce diagnostics. Code preview is available for inspection even when
 invalid, but it cannot be compiled or uploaded through the UI until corrected.
 Existing Python code generation is unchanged. Running Arduino blocks through
 Python reports that they must be compiled from the Arduino tab.
+
+## Math and Logic blocks
+
+Math includes the old BlockFactory operations in their original family order,
+alongside the shared Python-style entries. Rounding, ceiling/floor, absolute,
+square root, logarithms, and powers use existing blocks; Square adds the missing
+single-input operation. Trig uses degrees, including inverse-trig results.
+Numeric variable +=, -=, *=, and /= update a selected variable. Change variable
+by 1 or -1 in Variables covers the old increment/decrement statements, and
+Change ... and use new value provides prefix increment/decrement expressions
+in Math.
+
+32-bit bit operations cover AND, OR, XOR, left/right shifts, and bitwise NOT.
+Operands use their low 32-bit pattern; right shift sign-extends. Shift counts are
+0–31, and runtime counts outside that range return 0. Explicitly typed integer
+variables retain their integer precision; use long/uint32_t when storing full
+32-bit values, since the default Number variable is floating point on AVR.
+Floating bit operands truncate toward zero; non-finite bit operands become 0.
+C++ integer remainder follows the dividend sign, while shared Blockly modulo
+keeps Python's divisor-sign behavior. A literal zero divisor is reported; runtime
+zero or INT32_MIN / -1 remainder returns 0.
+
+Size in bytes accepts a value or a Variables type block. It generates sizeof,
+does not evaluate its operand, and uses the selected board's type sizes. It is
+not a text-length operation. Min/max and Square evaluate each operand once.
+
+Seed random calls randomSeed at its instruction (Arduino ignores seed 0).
+Arduino random integer excludes the upper bound, matching old BlockFactory;
+the shared Blockly random integer includes both endpoints and accepts reversed
+bounds. Random fraction returns a value in [0,1). Random generation is a program
+operation, not hardware entropy acquisition. Native integer arguments convert
+to signed 32-bit values; floating numeric arguments truncate and clamp to that
+range, while integer declarations avoid intermediate float conversion.
+
+Constrain evaluates its inputs once. Map offers Arduino integer arithmetic or
+decimal interpolation, handles reversed ranges, and does not clamp the output.
+A zero-width input range is reported for fixed inputs and returns 0 at runtime.
+All these functions use the Arduino core and standard math library; no additional
+extension library is needed. Shared list-math and number-property extras retain
+their existing unsupported-block diagnostics until separately migrated.
+
+Logic includes comparison, AND/OR, Boolean NOT, true/false, null, and ternary.
+Null generates C++ nullptr for pointer arguments/comparisons. Numeric logical
+conditions use zero as false and nonzero as true. Numeric/Boolean ternary values
+use C++ scalar promotion; incompatible result types are reported. These Arduino
+connection rules do not alter the main Python Blockly workspace.
+
+## Control blocks
+
+Control follows the old BlockFactory section after I/O and contains only
+Arduino additions. Shared While, For, Break/Continue, and Repeat blocks remain
+in Loops; If remains in Logic. Setup and Loop remain protected workspace entries.
+
+Do/while runs its body before checking the condition; Do/until reverses the test.
+Stop program waits forever at its position and leaves interrupts enabled. Wait
+and Time since start have millisecond/microsecond selectors; existing saved
+blocks default to milliseconds. A switch converts its selector to an integer,
+uses constant case labels, and breaks after each case. Right-click to add/remove
+cases or show/hide the default branch. Switch editing supports files, clipboard,
+and Undo. Break is valid in a loop or switch; Continue requires a loop. Timer
+callbacks and task methods start a new function scope.
+
+Hardware timer uses MsTimer2: Configure defines an interrupt callback and emits
+MsTimer2::set at its block; Start and Stop emit their calls at their blocks.
+Configure once per program and keep interrupt actions short. Referenced scalar
+Blockly variables become volatile. On Uno/Mega, MsTimer2 cannot be combined with
+software PWM or tone controls because they share Timer2.
+
+Timer N: every ... ms registers a repeating SimpleTimer callback after main
+Setup. Scheduled action N defines a callback; Schedule action N registers it
+at that instruction, with an interval and repeat count (1 = once, 0 = forever).
+All these blocks share one SimpleTimer instance, checked automatically every
+main Loop. The bundled copy supports 10 active timers total; repeating timer
+numbers and scheduled-action numbers must each be unique. Long blocking code
+delays software timer execution. Use a pin capture or an interrupt timer when
+actual interrupt timing is needed.
+
+Cooperative task N uses SCoop, with separate Setup/Loop sections and unique task
+numbers 1–8. Task definitions sit beside the main Setup and Loop. Startup and
+main-loop scheduling are generated automatically. Yield to other tasks can add
+an explicit handover point. Sleep this task works inside task methods and lets
+other tasks continue. The legacy library allocates a 150-byte default stack per
+task; RAM and blocking code limit practical concurrency, particularly on Uno.
+The bundled MsTimer2 and SCoop blocks target AVR boards and are compile-checked
+for Uno and Mega. Other cores require separate library compatibility checks.
 
 ## Arduino libraries and C++
 
@@ -363,6 +527,10 @@ node tests/test_cpp_types.js --studiox-root ../blockly
 node tests/test_address_of.js --studiox-root ../blockly
 node tests/test_text_escapes.js
 node tests/test_toolbox.js
+node tests/test_io.js
+node tests/test_interrupt_pins.js
+node tests/test_control.js
+node tests/test_math_logic.js
 node tests/test_scaffold.js
 node tests/test_dropdowns.js --studiox-root ../blockly
 node tests/test_declarations.js --studiox-root ../blockly

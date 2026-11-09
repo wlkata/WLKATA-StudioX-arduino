@@ -51,11 +51,15 @@
       const a = left.getSourceBlock(), b = right.getSourceBlock();
       const parent = a.getParent();
       // Blockly compares the two output connections here. Actual input/socket
-      // checks stay strict, and other workspaces keep their original checker.
+      // checks remain scoped to Arduino; other workspaces keep their checker.
       if (a.outputConnection === left && b.outputConnection === right &&
-          parent?.type === 'logic_compare' && b.getParent() === parent &&
+          ['logic_compare','logic_ternary'].includes(parent?.type) && b.getParent() === parent &&
           left.getCheck()?.some(type => ['Number', 'Boolean'].includes(type)) &&
           right.getCheck()?.some(type => ['Number', 'Boolean'].includes(type))) return true;
+      for (const [target,input,source,output] of [[a,left,b,right],[b,right,a,left]]) {
+        const names={logic_operation:['A','B'],logic_negate:['BOOL'],logic_ternary:['IF']}[target.type] || [];
+        if(source.outputConnection===output && output.getCheck()?.includes('Number') && names.some(name=>target.getInput(name)?.connection===input)) return true;
+      }
       return original.call(this, left, right);
     };
     checker.studioxCppComparisons_ = true;

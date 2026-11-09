@@ -91,7 +91,7 @@ class HeaderParserTests(unittest.TestCase):
                 again=manager.library_catalog('arduino:avr:uno')
             self.assertEqual(catalog,again)
             self.assertTrue(catalog['libraries'][0]['headers'][0]['functions'])
-            self.assertEqual(len(manager._header_cache),1)
+            self.assertEqual(len([key for key in manager._header_cache if key[3] == 'Devices']),1)
             with mock.patch.object(manager,'_json',side_effect=[RuntimeError('Core not installed'),payload]):
                 fallback=manager.library_catalog('arduino:avr:uno')
             self.assertEqual(fallback['warnings'],['Core not installed'])

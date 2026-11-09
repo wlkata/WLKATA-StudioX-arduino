@@ -66,6 +66,7 @@ function visit(block) {
   if (block.next) visit(block.next.block || block.next.shadow);
 }
 state.blocks.blocks.forEach(visit);
-assert.deepStrictEqual(supportedBlockTypes.filter(type => !visited.has(type)), [], 'fixture must exercise every supported block');
-if (process.argv[2]) fs.writeFileSync(process.argv[2], generated.code);
+// test_io.js combines this baseline with the I/O fixture to check full coverage.
+module.exports = { visited };
+if (require.main === module && process.argv[2]) fs.writeFileSync(process.argv[2], generated.code);
 console.log('Full Arduino block subset fixture generated without diagnostics.');

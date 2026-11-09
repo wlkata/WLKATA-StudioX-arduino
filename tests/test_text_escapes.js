@@ -55,7 +55,7 @@ assert.strictEqual(cppTypes.textField(String.raw`\t`), String.raw`\\t`);
 assert.strictEqual(cppTypes.textField('\t'), String.raw`\t`);
 const source = {kind:'categoryToolbox',contents:[{kind:'category',name:'Text',contents:[{kind:'block',type:'text'}]}]};
 const sourceBefore = JSON.stringify(source);
-assert.match(build(source).contents[0].contents[0].text, /Escapes/);
+assert.match(build(source).contents.find(item=>item.name==='Text').contents[0].text, /Escapes/);
 assert.strictEqual(JSON.stringify(source),sourceBefore,'Arduino hints do not modify the shared Python toolbox');
 
 const folder = fs.mkdtempSync(path.join(os.tmpdir(),'studiox-text-escapes-'));

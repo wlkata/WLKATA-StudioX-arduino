@@ -95,7 +95,7 @@ for (const op of ['ROOT','ABS','NEG','LN','LOG10','EXP','POW10']) {
   valid(snapshot(block('text_print', {}, { TEXT: block('math_single', { OP: op }, { NUM: number(3) }) })));
 }
 assert.ok(supportedBlockTypes.includes('arduino_pin_mode'));
-if (process.argv[2]) {
+if (require.main === module && process.argv[2]) {
   require('fs').writeFileSync(process.argv[2], generated);
 }
 console.log('Arduino compiler passed: Blink, basic control flow, fixed variable types, loop context, disabled blocks, dormant shadows, unsupported blocks, and C++ string escaping.');
